@@ -4,8 +4,8 @@ info:
   description: API for providing analytics and forecasting tools for possible and rate of the spread of eutrophication
   version: 1.0.0
 servers:
-  - url: http://localhost:8200
-    description: Local development server
+  - url: http://localhost:8200/v1
+    description: Local development server (v1)
 
 paths:
   /api/datasets:
@@ -15,6 +15,8 @@ paths:
       operationId: getDatasets
       security:
         - bearerAuth: []
+      tags:
+        - Datasets
       parameters:
         - name: library
           in: query
@@ -43,11 +45,12 @@ paths:
         - name: bbox
           in: query
           description: Add a bounding box to filter data for specific areas.
+          explode: false
           schema:
             type: array
             items:
               type: number
-          example: [102.0, 0.5, 103.0, 1.5]
+          example: 102.0, 0.5, 103.0, 1.5
       responses:
         "200":
           description: Successful response
@@ -84,6 +87,13 @@ paths:
               example:
                 status: error
                 message: "Missing or invalid authentication token"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                status: error
+                message: "An unexpected error occurred on the server"
 
   /api/datasets/{dataset_id}:
     get:
@@ -92,6 +102,8 @@ paths:
       operationId: getDatasetById
       security:
         - bearerAuth: []
+      tags:
+        - Datasets
       parameters:
         - name: dataset_id
           in: path
@@ -137,6 +149,13 @@ paths:
               example:
                 status: error
                 message: "Dataset not found"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                status: error
+                message: "An unexpected error occurred on the server"
 
   /api/awei-water-mask:
     get:
@@ -145,6 +164,8 @@ paths:
       operationId: getAweiWaterMask
       security:
         - bearerAuth: []
+      tags:
+        - Tools
       parameters:
         - name: spatial_resolution
           in: query
@@ -170,11 +191,12 @@ paths:
           in: query
           description: Add a bounding box to filter data for specific areas.
           required: true
+          explode: false
           schema:
             type: array
             items:
               type: number
-          example: [102.0, 0.5, 103.0, 1.5]
+          example: 102.0, 0.5, 103.0, 1.5
         - name: input_type
           in: query
           description: Filter by dataset type (Landsat or Sentinel).
@@ -214,6 +236,13 @@ paths:
               example:
                 status: error
                 message: "Method Not Allowed"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                status: error
+                message: "An unexpected error occurred on the server"
 
   /api/ndti:
     get:
@@ -222,6 +251,8 @@ paths:
       operationId: getNDTI
       security:
         - bearerAuth: []
+      tags:
+        - Tools
       parameters:
         - name: spatial_resolution
           in: query
@@ -247,11 +278,12 @@ paths:
           in: query
           description: Add a bounding box to filter data for specific areas.
           required: true
+          explode: false
           schema:
             type: array
             items:
               type: number
-          example: [100.0, 0.0, 101.0, 1.0]
+          example: 100.0, 0.0, 101.0, 1.0
         - name: input_type
           in: query
           description: Filter by Landsat or Sentinel.
@@ -303,6 +335,13 @@ paths:
               example:
                 status: error
                 message: "Method Not Allowed"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                status: error
+                message: "An unexpected error occurred on the server"
 
   /api/ndci:
     get:
@@ -313,6 +352,8 @@ paths:
       operationId: getNDCI
       security:
         - bearerAuth: []
+      tags:
+        - Tools
       parameters:
         - name: spatial_resolution
           in: query
@@ -337,11 +378,12 @@ paths:
         - name: bbox
           in: query
           description: Add a bounding box to filter data for specific areas.
+          explode: false
           schema:
             type: array
             items:
               type: number
-          example: [100.0, 0.0, 101.0, 1.0]
+          example: 100.0, 0.0, 101.0, 1.0
         - name: input_type
           in: query
           description: Filter by Landsat or Sentinel.
@@ -422,6 +464,13 @@ paths:
               example:
                 status: error
                 message: "Method Not Allowed"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                status: error
+                message: "An unexpected error occurred on the server"
 
   /api/auth/token:
     post:
@@ -429,6 +478,8 @@ paths:
       description: |
         This endpoint generates an authentication token that can be used in subsequent API requests requiring authentication.
       operationId: generateToken
+      tags:
+        - Authentication
       parameters:
         - in: header
           name: Content-Type
@@ -500,6 +551,13 @@ paths:
                   error:
                     type: string
                     example: "Invalid username or password."
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                status: error
+                message: "An unexpected error occurred on the server"
       security: []
 
 
