@@ -1,280 +1,512 @@
 openapi: 3.0.0
 info:
   title: SANSA Water Quality and Quantity
-  description: API for accessing various dataset types such as AWEI, NDTI, and NDCI.
+  description: API for providing analytics and forecasting tools for possible and rate of the spread of eutrophication
   version: 1.0.0
 servers:
   - url: http://localhost:8200
     description: Local development server
 
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-security:
-  - BearerAuth: []
-
 paths:
   /api/datasets:
     get:
       summary: Get Overview of All Data Crawled
-      description: Returns all saved data categorized by dataset type, including filters and summary statistics.
+      description: Returns all saved data categorized by dataset type and includes filters for querying specific information.
+      operationId: getDatasets
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - name: library
           in: query
+          description: Filter by dataset category (e.g., AWEI, NDTI, NDCI, SABI, Coloured Dissolved Organic Matter)
           schema:
             type: string
-          description: Filter by dataset category (e.g., AWEI, NDTI, NDCI).
+          example: AWEI
         - name: dataset
           in: query
+          description: Filter if dataset is Landsat or Sentinel.
           schema:
             type: string
-          description: Filter by dataset source (Landsat or Sentinel).
+          example: Landsat
         - name: format
           in: query
+          description: Filter by output format (e.g., TIFF, Shapefile, RASTER)
           schema:
             type: string
-          description: Filter by output format (TIFF, Shapefile, RASTER).
+          example: TIFF
         - name: summary
           in: query
+          description: If set to true, returns summary statistics instead of raw data.
           schema:
             type: boolean
-          description: If set to true, returns summary statistics instead of raw data.
+          example: True
         - name: bbox
           in: query
+          description: Add a bounding box to filter data for specific areas.
           schema:
             type: array
             items:
               type: number
-          description: Bounding box filter (e.g., [102.0, 0.5, 103.0, 1.5]).
+          example: [102.0, 0.5, 103.0, 1.5]
       responses:
         "200":
-          description: Successful response with dataset information.
+          description: Successful response
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        category:
-                          type: string
-                        source:
-                          type: string
-                        resolution:
-                          type: string
-                        output_format:
-                          type: string
-                        file_path:
-                          type: string
-                        date_crawled:
-                          type: string
-                          format: date
-                        bbox:
-                          type: array
-                          items:
-                            type: array
-                            items:
-                              type: number
+              example:
+                status: success
+                data:
+                  - id: 1
+                    category: AWEI
+                    source: Landsat/Sentinel
+                    resolution: 10m to 300m
+                    output_format: TIFF
+                    file_path: https://example.com/uploads/image.tiff
+                    date_crawled: "05/02/2025"
+                    bbox: [[102.0, 0.5], [102.0, 0.5], [102.0, 0.5], [102.0, 0.5]]
+                summary:
+                  total_entries: 1
+                  categories: ["AWEI"]
+                  unique_sources: ["Landsat", "Sentinel"]
+                  resolutions: ["10m", "100m", "300m"]
+                  formats: ["TIFF", "RASTER", "Shapefile"]
         "400":
-          description: Invalid filter parameter.
+          description: Bad request due to invalid filter parameter
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
+              example:
+                status: error
+                message: "Invalid filter parameter"
         "401":
-          description: Unauthorized request.
+          description: Unauthorized request due to missing or invalid authentication token
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
+              example:
+                status: error
+                message: "Missing or invalid authentication token"
+
+  /api/datasets/{dataset_id}:
+    get:
+      summary: Get Dataset by ID
+      description: Retrieves detailed information about a specific dataset using its unique ID.
+      operationId: getDatasetById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dataset_id
+          in: path
+          required: true
+          description: Unique identifier of the dataset.
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  id: 1
+                  category: AWEI
+                  source: Landsat/Sentinel
+                  resolution: 10m to 300m
+                  output_format: TIFF
+                  file_path: https://example.com/uploads/image.tiff
+                  date_crawled: "05/02/2025"
+                  bbox: [[102.0, 0.5], [102.0, 0.5], [102.0, 0.5], [102.0, 0.5]]
+        "400":
+          description: Bad request due to invalid dataset ID
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Invalid dataset ID"
+        "401":
+          description: Unauthorized request due to missing or invalid authentication token
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Missing or invalid authentication token"
+        "404":
+          description: Dataset not found
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Dataset not found"
 
   /api/awei-water-mask:
     get:
-      summary: Get Automated Water Extraction Index (AWEI)
-      description: Retrieves water mask for rivers, lakes, and reservoirs.
+      summary: Get AWEI Water Mask
+      description: This endpoint provides access to the water mask for extraction of river, lake, and reservoir boundaries.
+      operationId: getAweiWaterMask
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - name: spatial_resolution
           in: query
+          description: Filter by spatial resolution.
           schema:
             type: integer
-          description: Filter by spatial resolution.
+          example: 30
         - name: start_date
           in: query
+          description: Filter by dataset start date.
           schema:
             type: string
             format: date
-          description: Filter by dataset start date (DD/MM/YYYY).
+          example: "01/01/2024"
         - name: end_date
           in: query
+          description: Filter by dataset end date.
           schema:
             type: string
             format: date
-          description: Filter by dataset end date (DD/MM/YYYY).
+          example: "31/12/2024"
         - name: bbox
           in: query
+          description: Add a bounding box to filter data for specific areas.
+          required: true
           schema:
             type: array
             items:
               type: number
-          required: true
-          description: Bounding box filter (e.g., [102.0, 0.5, 103.0, 1.5]).
+          example: [102.0, 0.5, 103.0, 1.5]
         - name: input_type
           in: query
+          description: Filter by dataset type (Landsat or Sentinel).
+          required: true
           schema:
             type: string
-          required: true
-          description: Filter by input type (Landsat or Sentinel).
+          example: "Landsat"
       responses:
         "200":
-          description: Successful response with AWEI water mask data.
+          description: Successful response
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        name:
-                          type: string
-                        file_url:
-                          type: string
+              example:
+                status: success
+                data:
+                  - id: 1
+                    name: elevation_data
+                    file_url: https://example.com/awei/water_mask.tif
         "400":
-          description: Invalid bounding box.
+          description: Bad request due to invalid parameters
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
+              example:
+                status: error
+                message: "Invalid bounding box"
         "401":
-          description: Unauthorized request.
+          description: Unauthorized request due to missing or invalid authentication token
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
+              example:
+                status: error
+                message: "Missing or invalid authentication token"
+        "405":
+          description: Method Not Allowed for unsupported HTTP methods
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Method Not Allowed"
 
   /api/ndti:
     get:
-      summary: Get Normalized Difference Turbidity Index (NDTI)
-      description: Retrieves raster data for NDTI related to water pollution and sedimentation.
+      summary: Get Normalized Difference Turbidity Index (NDTI) Data
+      description: Returns a raster for NDTI along with necessary data calculated for water pollution, sedimentation in rivers, lakes, and dams.
+      operationId: getNDTI
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - name: spatial_resolution
           in: query
+          description: Filter by spatial resolution.
           schema:
             type: integer
-          description: Filter by spatial resolution.
+          example: 30
         - name: start_date
           in: query
+          description: Filter by dataset start date.
           schema:
             type: string
             format: date
-          description: Filter by dataset start date (DD/MM/YYYY).
+          example: "01/01/2024"
         - name: end_date
           in: query
+          description: Filter by dataset end date.
           schema:
             type: string
             format: date
-          description: Filter by dataset end date (DD/MM/YYYY).
+          example: "31/12/2024"
         - name: bbox
           in: query
+          description: Add a bounding box to filter data for specific areas.
+          required: true
           schema:
             type: array
             items:
               type: number
-          required: true
-          description: Bounding box filter (e.g., [100.0, 0.0, 101.0, 1.0]).
+          example: [100.0, 0.0, 101.0, 1.0]
         - name: input_type
           in: query
+          description: Filter by Landsat or Sentinel.
+          required: true
           schema:
             type: string
-          required: true
-          description: Filter by input type (Landsat or Sentinel).
+          example: "Landsat"
       responses:
         "200":
-          description: Successful response with NDTI data.
+          description: Successful response
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        name:
-                          type: string
-                        file_url:
-                          type: string
-                        water_pollution:
-                          type: object
-                        sediment:
-                          type: object
+              example:
+                status: success
+                data:
+                  - id: 1
+                    name: elevation_data
+                    file_url: https://example.com/ndti/mask.tif
+                    possible_point_pollution:
+                      sources: ["Industrial Waste", "Agricultural Runoff"]
+                      coordinates: [[100.5, 0.5], [101.2, 1.2]]
+                    possible_non-point_pollution:
+                      sources: ["Urban Runoff", "Erosion"]
+                      affected_area: "5 sq km"
+                    water_pollution:
+                      turbidity_level: "High"
+                      pollutants_detected: ["Nitrates", "Phosphates"]
+                    sediment:
+                      sediment_concentration: "Moderate"
+                      affected_water_bodies: ["River A", "Lake B"]
         "400":
-          description: Invalid request parameters.
+          description: Bad request due to invalid parameters
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
+              example:
+                status: error
+                message: "Invalid bounding box"
         "401":
-          description: Unauthorized request.
+          description: Unauthorized request due to missing or invalid authentication token
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Missing or invalid authentication token"
+        "405":
+          description: Method not allowed
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Method Not Allowed"
+
+  /api/ndci:
+    get:
+      summary: Get Normalized Difference Chlorophyll Index (NDCI)
+      description: |
+        This endpoint returns a raster for NDCI and necessary data calculated for water pollution, 
+        sedimentation in rivers, lakes, and dams.
+      operationId: getNDCI
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: spatial_resolution
+          in: query
+          description: Filter by spatial resolution.
+          schema:
+            type: integer
+          example: 30
+        - name: start_date
+          in: query
+          description: Filter by dataset start date.
+          schema:
+            type: string
+            format: date
+          example: "01/01/2024"
+        - name: end_date
+          in: query
+          description: Filter by dataset end date.
+          schema:
+            type: string
+            format: date
+          example: "31/12/2024"
+        - name: bbox
+          in: query
+          description: Add a bounding box to filter data for specific areas.
+          schema:
+            type: array
+            items:
+              type: number
+          example: [100.0, 0.0, 101.0, 1.0]
+        - name: input_type
+          in: query
+          description: Filter by Landsat or Sentinel.
+          schema:
+            type: string
+          example: "Landsat"
+        - name: air_temperature
+          in: query
+          description: Add the air temperature for the atmospheric model.
+          schema:
+            type: number
+          example: 25.5
+        - name: relative_humidity
+          in: query
+          description: Add the humidity for the atmospheric model.
+          schema:
+            type: number
+          example: 65.0
+        - name: wind_speed
+          in: query
+          description: Add the wind speed for the atmospheric model.
+          schema:
+            type: number
+          example: 5.5
+        - name: precipitation
+          in: query
+          description: Add the precipitation for the atmospheric model.
+          schema:
+            type: number
+          example: 12.3
+        - name: solar_radiation
+          in: query
+          description: Add the solar radiation for the atmospheric model.
+          schema:
+            type: number
+          example: 850.0
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  - id: 1
+                    name: "ndci_data"
+                    file_url: "https://example.com/ndci/mask.tif"
+                    possible_point_pollution:
+                      industrial_discharge: "Detected near site X"
+                      wastewater_treatment: "Moderate contamination"
+                    possible_non-point_pollution:
+                      agricultural_runoff: "High nitrate levels detected"
+                      urban_stormwater: "Trace pollution identified"
+                    water_pollution:
+                      chlorophyll_a: "Elevated levels detected"
+                      turbidity: "Moderate"
+                    sediment:
+                      sediment_load: "High during rainy season"
+                      source: "Erosion from upstream"
+        "400":
+          description: Bad request due to invalid filter parameter
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Invalid bounding box"
+        "401":
+          description: Unauthorized request due to missing or invalid authentication token
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Missing or invalid authentication token"
+        "405":
+          description: Method Not Allowed
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Method Not Allowed"
+
+  /api/auth/token:
+    post:
+      summary: Generate Authentication Token
+      description: |
+        This endpoint generates an authentication token that can be used in subsequent API requests requiring authentication.
+      operationId: generateToken
+      parameters:
+        - in: header
+          name: Content-Type
+          required: true
+          schema:
+            type: string
+            example: "application/json"
+          description: The content type of the request, must be `application/json`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  description: The username of the user.
+                  example: "user@example.com"
+                password:
+                  type: string
+                  format: password
+                  description: The password of the user.
+                  example: "securepassword"
+                grant_type:
+                  type: string
+                  description: The type of authentication request. Default is `password`.
+                  example: "password"
+      responses:
+        "200":
+          description: Successful authentication response
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
+                  token:
                     type: string
-                  message:
+                    description: The generated authentication token.
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  expires_in:
+                    type: integer
+                    description: Token expiration time in seconds.
+                    example: 3600
+                  token_type:
                     type: string
+                    description: Type of token, typically `Bearer`.
+                    example: "Bearer"
+        "400":
+          description: Bad request due to missing parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Username and password are required."
+        "401":
+          description: Unauthorized request due to invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid username or password."
+      security: []
+
+
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

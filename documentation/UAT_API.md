@@ -27,6 +27,13 @@ If no token is provided or if the token is invalid, the request will return a `4
 | summary   | boolean | optional | If set to true, returns summary statistics instead of raw data. |
 | bbox      | array  | optional | Add a bounding box to filter data for specific areas. |
 
+#### Example Request 
+
+```
+GET http://example.com/api/datasets?library=AWEI&dataset=Landsat&format=TIFF&summary=true&bbox=102.0,0.5,103.0,1.5
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
 
 #### Response Structure
 
@@ -96,6 +103,105 @@ If no token is provided or if the token is invalid, the request will return a `4
 
 ---
 
+### 1.1.1 Get Dataset by ID
+
+**URL:** `/api/datasets/{id}`  
+**Content-Type:** `application/json`  
+**Method:** `GET`  
+**Description:** This endpoint retrieves a specific dataset by its unique ID. The dataset information returned includes metadata, the data file path, and additional details about the dataset.
+
+#### Authentication
+
+All requests must include an `Authorization` header with a valid Bearer token:
+
+```
+Authorization: Bearer <your_token_here>
+```
+
+If no token is provided or if the token is invalid, the request will return a `401 Unauthorized` error.
+
+#### Request Parameters
+
+| Parameter | Type   | Required | Description                      |
+|-----------|--------|----------|----------------------------------|
+| id        | string | required | The unique identifier for the dataset. |
+
+#### Example Request 
+
+```
+GET http://example.com/api/datasets?library=AWEI&dataset=Landsat&format=TIFF&summary=true&bbox=102.0,0.5,103.0,1.5
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+
+#### Response Structure
+
+**Success Response (200 OK)**
+
+```json
+{
+  "status": "success",
+  "data":
+    {
+      "id": 1,
+      "category": "AWEI",
+      "source": "Landsat/Sentinel",
+      "resolution": "10m to 300m",
+      "output_format": "TIFF",
+      "file_path": "/uploads/image.tiff",
+      "date_crawled": "05/02/2025",
+      "bbox": [[102.0, 0.5], [102.0, 0.5], [102.0, 0.5], [102.0, 0.5]]
+    }
+}
+```
+
+**Error Response (404 Not Found)**
+
+```json
+{
+  "status": "error",
+  "message": "Dataset with the given ID not found"
+}
+```
+
+**Error Response (400 Bad request)**
+
+```json
+{
+  "status": "error",
+  "message": "Invalid filter parameter"
+}
+```
+
+**401 Unauthorized** (When no token is provided or the token is invalid)
+
+```json
+{
+  "status": "error",
+  "message": "Missing or invalid authentication token"
+}
+```
+
+#### Edge Cases & Boundary Conditions
+- **Empty Filters:** API should return all available datasets if no filters are applied.
+- **Invalid Format:** If an unsupported format is requested, the API should return a `400 Bad Request`.
+- **Large Dataset Request:** If the response is too large, API should implement pagination or return an appropriate error.
+- **Bounding Box Precision:** Edge cases should verify how precise the bounding box needs to be for filtering.
+
+#### Test Cases
+| Test Case | Input | Expected Output |
+|-----------|-------|----------------|
+| Retrieve existing dataset | `id=1` | 	Returns the dataset details for ID 1|
+| Dataset not found | `id=999` | Returns 404 Not Found|
+| Invalid dataset ID | `id=abc` | Returns 400 Bad Request |
+| Send POST request | `POST /api/saved-datasets` | Returns 405 Method Not Allowed |
+| Send PUT request | `PUT /api/saved-datasets` | Returns 405 Method Not Allowed |
+| Send DELETE request | `DELETE /api/saved-datasets` | Returns 405 Method Not Allowed |
+| Missing Bearer Token | No `Authorization` header | Returns 401 Unauthorized |
+| Invalid Bearer Token | `Authorization: Bearer invalid_token` | Returns 401 Unauthorized |
+
+---
+
 ### 1.2 Automated Water Extraction Index (AWEI)
 
 **URL:** `/api/awei-water-mask`  
@@ -134,7 +240,7 @@ If no token is provided or if the token is invalid, the request will return a `4
     {
       "id": 1,
       "name": "elevation_data",
-      "file_url": "/awei/water_mask.tif"
+      "file_url": "http://example.com/awei/water_mask.tif"
     }
   ]
 }
@@ -217,7 +323,7 @@ If no token is provided or if the token is invalid, the request will return a `4
     {
       "id": 1,
       "name": "elevation_data",
-      "file_url": "/ndti/mask.tif",
+      "file_url": "http://example.com/ndti/mask.tif",
       "possible_point_pollution": {},
       "possible_non-point_pollution": {},
       "water_pollution": {},
@@ -308,11 +414,23 @@ If no token is provided or if the token is invalid, the request will return a `4
     {
       "id": 1,
       "name": "elevation_data",
-      "file_url": "/ndci/mask.tif",
-      "possible_point_pollution": {},
-      "possible_non-point_pollution": {},
-      "water_pollution": {},
-      "sediment": {}
+      "file_url": "http://example.com/ndci/mask.tif",
+      "possible_point_pollution": {
+        "industrial_discharge": "Detected near site X",
+        "wastewater_treatment": "Moderate contamination",
+      },
+      "possible_non-point_pollution": {
+        "agricultural_runoff": "High nitrate levels detected",
+        "urban_stormwater": "Trace pollution identified",
+      },
+      "water_pollution": {
+        "chlorophyll_a": "Elevated levels detected",
+        "turbidity": "Moderate",
+      },
+      "sediment": {
+        "sediment_load": "High during rainy season",
+        "source": "Erosion from upstream",
+      }
     }
   ]
 }
