@@ -243,6 +243,94 @@ paths:
               example:
                 status: error
                 message: "An unexpected error occurred on the server"
+  
+  /api/awei-water-extent:
+    get:
+      summary: Calculate Water Extent
+      description: This endpoint calculates the water surface area extent using the Automated Water Extraction Index (AWEI).
+      operationId: calculateWaterExtent
+      security:
+        - bearerAuth: []
+      tags:
+        - Tools
+      parameters:
+        - name: spatial_resolution
+          in: query
+          description: Filter by spatial resolution.
+          schema:
+            type: integer
+          example: 30
+        - name: start_date
+          in: query
+          description: Filter by dataset start date.
+          schema:
+            type: string
+            format: date
+          example: "01/01/2024"
+        - name: end_date
+          in: query
+          description: Filter by dataset end date.
+          schema:
+            type: string
+            format: date
+          example: "31/12/2024"
+        - name: bbox
+          in: query
+          description: Add a bounding box to filter data for specific areas.
+          required: true
+          explode: false
+          schema:
+            type: array
+            items:
+              type: number
+          example: [102.0, 0.5, 103.0, 1.5]
+        - name: input_type
+          in: query
+          description: Filter by dataset type (Landsat or Sentinel).
+          required: true
+          schema:
+            type: string
+          example: "Sentinel"
+      responses:
+        "200":
+          description: Successful response with calculated water extent
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  - id: 1
+                    name: water_extent_data
+                    file_url: https://example.com/water_extent.tif
+                    area_km2: 125.4
+        "400":
+          description: Bad request due to invalid parameters
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Invalid bounding box"
+        "401":
+          description: Unauthorized request due to missing or invalid authentication token
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Missing or invalid authentication token"
+        "405":
+          description: Method Not Allowed for unsupported HTTP methods
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Method Not Allowed"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                status: error
+                message: "An unexpected error occurred on the server"
 
   /api/ndti:
     get:
