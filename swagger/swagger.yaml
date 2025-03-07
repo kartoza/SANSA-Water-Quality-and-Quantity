@@ -1,0 +1,280 @@
+openapi: 3.0.0
+info:
+  title: SANSA Water Quality and Quantity
+  description: API for accessing various dataset types such as AWEI, NDTI, and NDCI.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8200
+    description: Local development server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/datasets:
+    get:
+      summary: Get Overview of All Data Crawled
+      description: Returns all saved data categorized by dataset type, including filters and summary statistics.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: library
+          in: query
+          schema:
+            type: string
+          description: Filter by dataset category (e.g., AWEI, NDTI, NDCI).
+        - name: dataset
+          in: query
+          schema:
+            type: string
+          description: Filter by dataset source (Landsat or Sentinel).
+        - name: format
+          in: query
+          schema:
+            type: string
+          description: Filter by output format (TIFF, Shapefile, RASTER).
+        - name: summary
+          in: query
+          schema:
+            type: boolean
+          description: If set to true, returns summary statistics instead of raw data.
+        - name: bbox
+          in: query
+          schema:
+            type: array
+            items:
+              type: number
+          description: Bounding box filter (e.g., [102.0, 0.5, 103.0, 1.5]).
+      responses:
+        "200":
+          description: Successful response with dataset information.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        category:
+                          type: string
+                        source:
+                          type: string
+                        resolution:
+                          type: string
+                        output_format:
+                          type: string
+                        file_path:
+                          type: string
+                        date_crawled:
+                          type: string
+                          format: date
+                        bbox:
+                          type: array
+                          items:
+                            type: array
+                            items:
+                              type: number
+        "400":
+          description: Invalid filter parameter.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Unauthorized request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+
+  /api/awei-water-mask:
+    get:
+      summary: Get Automated Water Extraction Index (AWEI)
+      description: Retrieves water mask for rivers, lakes, and reservoirs.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spatial_resolution
+          in: query
+          schema:
+            type: integer
+          description: Filter by spatial resolution.
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter by dataset start date (DD/MM/YYYY).
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter by dataset end date (DD/MM/YYYY).
+        - name: bbox
+          in: query
+          schema:
+            type: array
+            items:
+              type: number
+          required: true
+          description: Bounding box filter (e.g., [102.0, 0.5, 103.0, 1.5]).
+        - name: input_type
+          in: query
+          schema:
+            type: string
+          required: true
+          description: Filter by input type (Landsat or Sentinel).
+      responses:
+        "200":
+          description: Successful response with AWEI water mask data.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        file_url:
+                          type: string
+        "400":
+          description: Invalid bounding box.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Unauthorized request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+
+  /api/ndti:
+    get:
+      summary: Get Normalized Difference Turbidity Index (NDTI)
+      description: Retrieves raster data for NDTI related to water pollution and sedimentation.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spatial_resolution
+          in: query
+          schema:
+            type: integer
+          description: Filter by spatial resolution.
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter by dataset start date (DD/MM/YYYY).
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter by dataset end date (DD/MM/YYYY).
+        - name: bbox
+          in: query
+          schema:
+            type: array
+            items:
+              type: number
+          required: true
+          description: Bounding box filter (e.g., [100.0, 0.0, 101.0, 1.0]).
+        - name: input_type
+          in: query
+          schema:
+            type: string
+          required: true
+          description: Filter by input type (Landsat or Sentinel).
+      responses:
+        "200":
+          description: Successful response with NDTI data.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        file_url:
+                          type: string
+                        water_pollution:
+                          type: object
+                        sediment:
+                          type: object
+        "400":
+          description: Invalid request parameters.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Unauthorized request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
