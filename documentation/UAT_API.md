@@ -285,6 +285,88 @@ If no token is provided or if the token is invalid, the request will return a `4
 
 ---
 
+### 1.2.1 Water Surface Area Extent Calculation
+
+**URL:** `/api/awei-water-extent`  
+**Method:** `GET`  
+**Content-Type:** `application/json`  
+**Description:** This endpoint calculates the water surface area extent based on the provided parameters.
+
+#### Authentication
+
+All requests must include an `Authorization` header with a valid Bearer token:
+
+```
+Authorization: Bearer <your_token_here>
+```
+
+If no token is provided or if the token is invalid, the request will return a `401 Unauthorized` error.
+
+#### Request Parameters
+
+| Parameter          | Type   | Required | Description |
+|--------------------|--------|----------|-------------|
+| spatial_resolution | int    | optional | Filter by spatial resolution. |
+| start_date        | Date (DD/MM/YYYY) | optional | Filter by dataset start date. |
+| end_date          | Date (DD/MM/YYYY) | optional | Filter by dataset end date. |
+| bbox             | array  | required  | Add a bounding box to filter data for specific areas. |
+| input_type        | string | required  | Filter by dataset type (Landsat/Sentinel). |
+
+#### Response Structure
+
+**Success Response (200 OK)**
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "name": "water_extent_data",
+      "file_url": "http://example.com/water_extent.tif"
+    }
+  ]
+}
+```
+
+**Error Response (400 Bad Request)**
+
+```json
+{
+  "status": "error",
+  "message": "Invalid bounding box"
+}
+```
+
+**401 Unauthorized** (When no token is provided or the token is invalid)
+
+```json
+{
+  "status": "error",
+  "message": "Missing or invalid authentication token"
+}
+```
+
+#### Edge Cases & Boundary Conditions
+- **Missing Bounding Box:** API should return an error if `bbox` is missing.
+- **Invalid Date Format:** If dates are not in `DD/MM/YYYY` format, the request should fail.
+- **Large Bounding Box:** A large bounding box should return an appropriate number of results without timeout issues.
+
+#### Test Cases
+| Test Case | Input | Expected Output |
+|-----------|-------|----------------|
+| Valid request | `bbox=[102.0, 0.5, 103.0, 1.5]` | Returns water extent data |
+| Missing bbox | No `bbox` parameter | Returns 400 Bad Request |
+| Invalid input type | `input_type=Unknown` | Returns 400 Bad Request |
+| Send POST request | `POST /api/water-extent` | Returns 405 Method Not Allowed |
+| Send PUT request | `PUT /api/water-extent` | Returns 405 Method Not Allowed |
+| Send DELETE request | `DELETE /api/water-extent` | Returns 405 Method Not Allowed |
+| Missing Bearer Token | No `Authorization` header | Returns 401 Unauthorized |
+| Invalid Bearer Token | `Authorization: Bearer invalid_token` | Returns 401 Unauthorized |
+
+---
+
+
 ### 1.3 Normalized Difference Turbidity Index (NDTI)
 
 **URL:** `/api/ndti`  
