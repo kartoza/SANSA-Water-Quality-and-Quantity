@@ -95,7 +95,7 @@ paths:
                 status: error
                 message: "An unexpected error occurred on the server"
 
-  /api/datasets/{dataset_id}:
+  /api/dataset/{dataset_id}:
     get:
       summary: Get Dataset by ID
       description: Retrieves detailed information about a specific dataset using its unique ID.
