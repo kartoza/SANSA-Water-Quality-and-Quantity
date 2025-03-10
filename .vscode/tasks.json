@@ -1,0 +1,25 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Django: Migrate",
+        "type": "shell",
+        "command": "python manage.py migrate",
+        "group": "build",
+        "options": {
+          "cwd": "${workspaceFolder}/django_project"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Django: Make Migrations",
+        "type": "shell",
+        "command": "python manage.py makemigrations",
+        "group": "build",
+        "options": {
+          "cwd": "${workspaceFolder}/django_project"
+        },
+        "problemMatcher": []
+      },
+    ]
+}
