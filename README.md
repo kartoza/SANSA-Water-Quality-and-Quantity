@@ -1,7 +1,5 @@
 # SANSA Water Quality and Quantity Public
 
-A boilerplate for kickstarting Kartoza Django backend and React frontend projects
-
 
 ## ⚡ Quick Start
 
