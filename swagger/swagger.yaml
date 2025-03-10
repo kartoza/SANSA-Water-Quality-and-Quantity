@@ -7,14 +7,24 @@ servers:
   - url: http://localhost:8200/v1
     description: Local development server (v1)
 
+tags:
+  - name: Datasets
+    description: Endpoints for returning overviews of stored data
+  - name: Water Surface Analysis
+    description: Endpoints for water surface area and altimeter estimation
+  - name: Water Quality
+    description: Endpoints for water pollution, eutrophication, and turbidity
+  - name: Index Calculations
+    description:  Endpoints for Normalised Difference Chlorophyll Index (NDCI)
+
 paths:
   /api/datasets:
     get:
       summary: Get Overview of All Data Crawled
-      description: Returns all saved data categorized by dataset type and includes filters for querying specific information.
+      description: Returns paginated data categorized by dataset type with filters for querying specific information.
       operationId: getDatasets
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       tags:
         - Datasets
       parameters:
@@ -41,16 +51,32 @@ paths:
           description: If set to true, returns summary statistics instead of raw data.
           schema:
             type: boolean
-          example: True
+          example: true
         - name: bbox
           in: query
-          description: Add a bounding box to filter data for specific areas.
+          description: Bounding box coordinates (minLon, minLat, maxLon, maxLat).
           explode: false
           schema:
             type: array
             items:
               type: number
-          example: 102.0, 0.5, 103.0, 1.5
+            minItems: 4
+            maxItems: 4
+          example: [ 102.0, 0.5, 103.0, 1.5 ]
+        - name: page
+          in: query
+          description: Page number for paginated results.
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: page_size
+          in: query
+          description: Number of items per page.
+          schema:
+            type: integer
+            default: 10
+          example: 10
       responses:
         "200":
           description: Successful response
@@ -59,20 +85,26 @@ paths:
               example:
                 status: success
                 data:
-                  - id: 1
-                    category: AWEI
-                    source: Landsat/Sentinel
-                    resolution: 10m to 300m
-                    output_format: TIFF
-                    file_path: https://example.com/uploads/image.tiff
-                    date_crawled: "05/02/2025"
-                    bbox: [[102.0, 0.5], [102.0, 0.5], [102.0, 0.5], [102.0, 0.5]]
+                  datasets:
+                    - id: 1
+                      category: AWEI
+                      source: Landsat
+                      resolution: "30m"
+                      output_format: TIFF
+                      download_url: https://example.com/uploads/image.tiff
+                      date_crawled: "2025-02-05"
+                      bbox: [ [ 102.0, 0.5 ], [ 103.0, 1.5 ] ]
+                pagination:
+                  current_page: 1
+                  page_size: 10
+                  total_pages: 5
+                  total_entries: 50
                 summary:
-                  total_entries: 1
-                  categories: ["AWEI"]
-                  unique_sources: ["Landsat", "Sentinel"]
-                  resolutions: ["10m", "100m", "300m"]
-                  formats: ["TIFF", "RASTER", "Shapefile"]
+                  total_entries: 50
+                  categories: [ "AWEI", "NDTI" ]
+                  unique_sources: [ "Landsat", "Sentinel" ]
+                  resolutions: [ "10m", "100m", "300m" ]
+                  formats: [ "TIFF", "RASTER", "Shapefile" ]
         "400":
           description: Bad request due to invalid filter parameter
           content:
@@ -98,7 +130,7 @@ paths:
   /api/dataset/{dataset_id}:
     get:
       summary: Get Dataset by ID
-      description: Retrieves detailed information about a specific dataset using its unique ID.
+      description: Retrieves detailed information about a specific dataset using its unique ID, including additional metadata and processing details.
       operationId: getDatasetById
       security:
         - bearerAuth: []
@@ -125,9 +157,14 @@ paths:
                   source: Landsat/Sentinel
                   resolution: 10m to 300m
                   output_format: TIFF
-                  file_path: https://example.com/uploads/image.tiff
-                  date_crawled: "05/02/2025"
+                  download_url: https://example.com/uploads/image.tiff
+                  date_crawled: "2025-02-05"
                   bbox: [[102.0, 0.5], [102.0, 0.5], [102.0, 0.5], [102.0, 0.5]]
+                  metadata:
+                    processed_by: "Automated Pipeline"
+                    processing_date: "2025-02-06"
+                    quality: "High"
+                    notes: "Cloud-free imagery with minimal artifacts"
         "400":
           description: Bad request due to invalid dataset ID
           content:
@@ -160,89 +197,97 @@ paths:
   /api/awei-water-mask:
     get:
       summary: Get AWEI Water Mask
-      description: This endpoint provides access to the water mask for extraction of river, lake, and reservoir boundaries.
+      description: |
+        Retrieve a water mask generated by the Automated Water Extraction Index (AWEI) suitable for visualizing on frontend map applications. The mask identifies water bodies such as rivers, lakes, and reservoirs.
       operationId: getAweiWaterMask
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       tags:
-        - Tools
+        - Water Surface Analysis
       parameters:
         - name: spatial_resolution
           in: query
-          description: Filter by spatial resolution.
+          description: Spatial resolution of the output mask (in meters).
           schema:
             type: integer
           example: 30
         - name: start_date
           in: query
-          description: Filter by dataset start date.
+          description: Start date of imagery dataset (YYYY-MM-DD).
           schema:
             type: string
             format: date
-          example: "01/01/2024"
+          example: "2024-01-01"
         - name: end_date
           in: query
-          description: Filter by dataset end date.
+          description: End date of imagery dataset (YYYY-MM-DD).
           schema:
             type: string
             format: date
-          example: "31/12/2024"
+          example: "2024-12-31"
         - name: bbox
           in: query
-          description: Add a bounding box to filter data for specific areas.
+          description: Bounding box coordinates (minLon, minLat, maxLon, maxLat).
           required: true
           explode: false
           schema:
             type: array
             items:
               type: number
-          example: 102.0, 0.5, 103.0, 1.5
+            minItems: 4
+            maxItems: 4
+          example: [ 102.0, 0.5, 103.0, 1.5 ]
         - name: input_type
           in: query
-          description: Filter by dataset type (Landsat or Sentinel).
+          description: Imagery dataset type (Landsat or Sentinel).
           required: true
           schema:
             type: string
+            enum:
+              - Landsat
+              - Sentinel
           example: "Landsat"
       responses:
         "200":
-          description: Successful response
+          description: Successful retrieval of AWEI water mask.
           content:
             application/json:
               example:
                 status: success
                 data:
-                  - id: 1
-                    name: elevation_data
-                    file_url: https://example.com/awei/water_mask.tif
+                  mask_url: "https://example.com/awei/water_mask.tif"
+                  bbox: [ 102.0, 0.5, 103.0, 1.5 ]
+                  spatial_resolution: 30
+                  input_type: "Landsat"
+                  generated_date: "2024-03-10"
         "400":
-          description: Bad request due to invalid parameters
+          description: Bad request due to invalid parameters.
           content:
             application/json:
               example:
                 status: error
-                message: "Invalid bounding box"
+                message: "Invalid bounding box coordinates."
         "401":
-          description: Unauthorized request due to missing or invalid authentication token
+          description: Unauthorized request due to missing or invalid authentication token.
           content:
             application/json:
               example:
                 status: error
-                message: "Missing or invalid authentication token"
+                message: "Missing or invalid authentication token."
         "405":
-          description: Method Not Allowed for unsupported HTTP methods
+          description: Method Not Allowed.
           content:
             application/json:
               example:
                 status: error
-                message: "Method Not Allowed"
+                message: "Method Not Allowed."
         "500":
-          description: Internal Server Error
+          description: Internal Server Error.
           content:
             application/json:
               example:
                 status: error
-                message: "An unexpected error occurred on the server"
+                message: "An unexpected error occurred on the server."
   
   /api/awei-water-extent:
     get:
@@ -252,7 +297,7 @@ paths:
       security:
         - bearerAuth: []
       tags:
-        - Tools
+        - Water Surface Analysis
       parameters:
         - name: spatial_resolution
           in: query
@@ -266,14 +311,14 @@ paths:
           schema:
             type: string
             format: date
-          example: "01/01/2024"
+          example: "2024-01-01"
         - name: end_date
           in: query
           description: Filter by dataset end date.
           schema:
             type: string
             format: date
-          example: "31/12/2024"
+          example: "2024-12-31"
         - name: bbox
           in: query
           description: Add a bounding box to filter data for specific areas.
@@ -299,9 +344,7 @@ paths:
               example:
                 status: success
                 data:
-                  - id: 1
-                    name: water_extent_data
-                    file_url: https://example.com/water_extent.tif
+                    bbox: "102.0,0.5,103.0,1.5"
                     area_km2: 125.4
         "400":
           description: Bad request due to invalid parameters
@@ -340,7 +383,7 @@ paths:
       security:
         - bearerAuth: []
       tags:
-        - Tools
+        - Water Quality
       parameters:
         - name: spatial_resolution
           in: query
@@ -354,24 +397,26 @@ paths:
           schema:
             type: string
             format: date
-          example: "01/01/2024"
+          example: "2024-01-01"
         - name: end_date
           in: query
           description: Filter by dataset end date.
           schema:
             type: string
             format: date
-          example: "31/12/2024"
+          example: "2024-12-31"
         - name: bbox
           in: query
-          description: Add a bounding box to filter data for specific areas.
+          description: Bounding box coordinates (minLon, minLat, maxLon, maxLat).
           required: true
           explode: false
           schema:
             type: array
             items:
               type: number
-          example: 100.0, 0.0, 101.0, 1.0
+            minItems: 4
+            maxItems: 4
+          example: [ 102.0, 0.5, 103.0, 1.5 ]
         - name: input_type
           in: query
           description: Filter by Landsat or Sentinel.
@@ -387,21 +432,19 @@ paths:
               example:
                 status: success
                 data:
-                  - id: 1
-                    name: elevation_data
-                    file_url: https://example.com/ndti/mask.tif
-                    possible_point_pollution:
-                      sources: ["Industrial Waste", "Agricultural Runoff"]
-                      coordinates: [[100.5, 0.5], [101.2, 1.2]]
-                    possible_non-point_pollution:
-                      sources: ["Urban Runoff", "Erosion"]
-                      affected_area: "5 sq km"
-                    water_pollution:
-                      turbidity_level: "High"
-                      pollutants_detected: ["Nitrates", "Phosphates"]
-                    sediment:
-                      sediment_concentration: "Moderate"
-                      affected_water_bodies: ["River A", "Lake B"]
+                  download_url: https://example.com/ndti/mask.tif
+                  possible_point_pollution:
+                    sources: ["Industrial Waste", "Agricultural Runoff"]
+                    coordinates: [[100.5, 0.5], [101.2, 1.2]]
+                  possible_non-point_pollution:
+                    sources: ["Urban Runoff", "Erosion"]
+                    affected_area: "5 km2"
+                  water_pollution:
+                    turbidity_level: "High"
+                    pollutants_detected: ["Nitrates", "Phosphates"]
+                  sediment:
+                    sediment_concentration: "Moderate"
+                    affected_water_bodies: ["River A", "Lake B"]
         "400":
           description: Bad request due to invalid parameters
           content:
@@ -441,7 +484,7 @@ paths:
       security:
         - bearerAuth: []
       tags:
-        - Tools
+        - Index Calculations
       parameters:
         - name: spatial_resolution
           in: query
@@ -455,23 +498,26 @@ paths:
           schema:
             type: string
             format: date
-          example: "01/01/2024"
+          example: "2024-01-01"
         - name: end_date
           in: query
           description: Filter by dataset end date.
           schema:
             type: string
             format: date
-          example: "31/12/2024"
+          example: "2024-12-31"
         - name: bbox
           in: query
-          description: Add a bounding box to filter data for specific areas.
+          description: Bounding box coordinates (minLon, minLat, maxLon, maxLat).
+          required: true
           explode: false
           schema:
             type: array
             items:
               type: number
-          example: 100.0, 0.0, 101.0, 1.0
+            minItems: 4
+            maxItems: 4
+          example: [ 102.0, 0.5, 103.0, 1.5 ]
         - name: input_type
           in: query
           description: Filter by Landsat or Sentinel.
@@ -516,21 +562,20 @@ paths:
               example:
                 status: success
                 data:
-                  - id: 1
-                    name: "ndci_data"
-                    file_url: "https://example.com/ndci/mask.tif"
-                    possible_point_pollution:
-                      industrial_discharge: "Detected near site X"
-                      wastewater_treatment: "Moderate contamination"
-                    possible_non-point_pollution:
-                      agricultural_runoff: "High nitrate levels detected"
-                      urban_stormwater: "Trace pollution identified"
-                    water_pollution:
-                      chlorophyll_a: "Elevated levels detected"
-                      turbidity: "Moderate"
-                    sediment:
-                      sediment_load: "High during rainy season"
-                      source: "Erosion from upstream"
+                  download_url: "https://example.com/ndci/mask.tif"
+                  chlorophyll_index: 0.32
+                  possible_point_pollution:
+                    industrial_discharge: "Detected near site X"
+                    wastewater_treatment: "Moderate contamination"
+                  possible_non-point_pollution:
+                    agricultural_runoff: "High nitrate levels detected"
+                    urban_stormwater: "Trace pollution identified"
+                  water_pollution:
+                    chlorophyll_a: "Elevated levels detected"
+                    turbidity: "Moderate"
+                  sediment:
+                    sediment_load: "High during rainy season"
+                    source: "Erosion from upstream"
         "400":
           description: Bad request due to invalid filter parameter
           content:
@@ -560,93 +605,93 @@ paths:
                 status: error
                 message: "An unexpected error occurred on the server"
 
-  /api/auth/token:
-    post:
-      summary: Generate Authentication Token
-      description: |
-        This endpoint generates an authentication token that can be used in subsequent API requests requiring authentication.
-      operationId: generateToken
-      tags:
-        - Authentication
-      parameters:
-        - in: header
-          name: Content-Type
-          required: true
-          schema:
-            type: string
-            example: "application/json"
-          description: The content type of the request, must be `application/json`.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - username
-                - password
-              properties:
-                username:
-                  type: string
-                  description: The username of the user.
-                  example: "user@example.com"
-                password:
-                  type: string
-                  format: password
-                  description: The password of the user.
-                  example: "securepassword"
-                grant_type:
-                  type: string
-                  description: The type of authentication request. Default is `password`.
-                  example: "password"
-      responses:
-        "200":
-          description: Successful authentication response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  token:
-                    type: string
-                    description: The generated authentication token.
-                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  expires_in:
-                    type: integer
-                    description: Token expiration time in seconds.
-                    example: 3600
-                  token_type:
-                    type: string
-                    description: Type of token, typically `Bearer`.
-                    example: "Bearer"
-        "400":
-          description: Bad request due to missing parameters
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "Username and password are required."
-        "401":
-          description: Unauthorized request due to invalid credentials
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "Invalid username or password."
-        "500":
-          description: Internal Server Error
-          content:
-            application/json:
-              example:
-                status: error
-                message: "An unexpected error occurred on the server"
-      security: []
+#  /api/auth/token:
+#    post:
+#      summary: Generate Authentication Token
+#      description: |
+#        This endpoint generates an authentication token that can be used in subsequent API requests requiring authentication.
+#      operationId: generateToken
+#      tags:
+#        - Authentication
+#      parameters:
+#        - in: header
+#          name: Content-Type
+#          required: true
+#          schema:
+#            type: string
+#            example: "application/json"
+#          description: The content type of the request, must be `application/json`.
+#      requestBody:
+#        required: true
+#        content:
+#          application/json:
+#            schema:
+#              type: object
+#              required:
+#                - username
+#                - password
+#              properties:
+#                username:
+#                  type: string
+#                  description: The username of the user.
+#                  example: "user@example.com"
+#                password:
+#                  type: string
+#                  format: password
+#                  description: The password of the user.
+#                  example: "securepassword"
+#                grant_type:
+#                  type: string
+#                  description: The type of authentication request. Default is `password`.
+#                  example: "password"
+#      responses:
+#        "200":
+#          description: Successful authentication response
+#          content:
+#            application/json:
+#              schema:
+#                type: object
+#                properties:
+#                  token:
+#                    type: string
+#                    description: The generated authentication token.
+#                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+#                  expires_in:
+#                    type: integer
+#                    description: Token expiration time in seconds.
+#                    example: 3600
+#                  token_type:
+#                    type: string
+#                    description: Type of token, typically `Bearer`.
+#                    example: "Bearer"
+#        "400":
+#          description: Bad request due to missing parameters
+#          content:
+#            application/json:
+#              schema:
+#                type: object
+#                properties:
+#                  error:
+#                    type: string
+#                    example: "Username and password are required."
+#        "401":
+#          description: Unauthorized request due to invalid credentials
+#          content:
+#            application/json:
+#              schema:
+#                type: object
+#                properties:
+#                  error:
+#                    type: string
+#                    example: "Invalid username or password."
+#        "500":
+#          description: Internal Server Error
+#          content:
+#            application/json:
+#              example:
+#                status: error
+#                message: "An unexpected error occurred on the server"
+#      security: []
 
 
 
