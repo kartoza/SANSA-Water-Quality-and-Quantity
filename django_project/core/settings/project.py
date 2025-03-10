@@ -31,8 +31,5 @@ DEBUG = TEMPLATE_DEBUG = False
 # Extra installed apps
 INSTALLED_APPS = INSTALLED_APPS + (
     'core',
+    'project'
 )
-
-TEMPLATES[0]['DIRS'] += [
-    absolute_path('frontend', 'templates'),
-]
