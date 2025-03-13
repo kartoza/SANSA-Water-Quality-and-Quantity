@@ -15,5 +15,5 @@ class DatasetAdmin(admin.ModelAdmin):
         'id', 'name', 'dataset_type', 
         'created_at', 'updated_at')
     search_fields = ('name',)
-    list_filter = ('dataset_type',)
+    list_filter = ('dataset_type', 'created_at', 'updated_at')
 

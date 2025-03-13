@@ -27,6 +27,9 @@ class MonitoringIndicatorType(models.Model):
         max_length=25,
     )
 
+    def __str__(self):
+        return f"Monitoring Indicator Type {self.name}"
+
 
 class MonitoringIndicator(models.Model):
     """
@@ -34,23 +37,20 @@ class MonitoringIndicator(models.Model):
     """
     dataset = models.ForeignKey(
         Dataset,
-        null=False,
-        blank=False,
         on_delete=models.CASCADE
     )
     monitoring_indicator_type = models.ForeignKey(
         MonitoringIndicatorType,
-        null=False,
-        blank=False,
         on_delete=models.CASCADE
     )
     indicator_name  = models.CharField(
-        null=False, 
-        blank=False, 
         max_length=100
     )
     value = models.FloatField(null=True, blank=False)
     generated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Monitoring Indicator {self.id} - {self.indicator_name}"
 
 
 class MonitoringReport(models.Model):
@@ -59,19 +59,18 @@ class MonitoringReport(models.Model):
     """
     user = models.ForeignKey(
         User,
-        null=False,
-        blank=False,
         on_delete=models.CASCADE
     )
     monitoring_indicator = models.ForeignKey(
         MonitoringIndicator,
-        null=False,
-        blank=False,
         on_delete=models.CASCADE
     )
     description = models.TextField(null=True, blank=True)
     generated_at = models.DateTimeField(auto_now=True)
-    report_link = models.URLField(null=True, blank=True)
+    report_link = models.URLField()
+
+    def __str__(self):
+        return f"Report {self.id} - {self.monitoring_indicator.name}"
 
 
 class ScheduledTask(models.Model):
@@ -96,4 +95,7 @@ class ScheduledTask(models.Model):
         max_length=25
     )
     started_at = models.DateTimeField()
-    completed_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.task_name

@@ -20,19 +20,15 @@ class DataSourceFile(models.Model):
     """
     Stores information about raw data files received from providers.
     """
-    name = models.TextField(null=False, blank=False)
+    name = models.TextField()
     description = models.TextField(null=True, blank=True)
     
     dataset = models.ForeignKey(
         Dataset,
-        null=False,
-        blank=False,
         on_delete=models.CASCADE
     )
     provider = models.ForeignKey(
         Provider,
-        null=False,
-        blank=False,
         on_delete=models.CASCADE
     )
     

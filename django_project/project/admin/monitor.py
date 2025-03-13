@@ -20,7 +20,7 @@ class MonitoringIndicatorAdmin(admin.ModelAdmin):
         'id', 'dataset', 'monitoring_indicator_type', 
         'indicator_name', 'value', 'generated_at')
     search_fields = ('indicator_name',)
-    list_filter = ('monitoring_indicator_type',)
+    list_filter = ('monitoring_indicator_type', 'generated_at')
 
 
 @admin.register(MonitoringReport)
@@ -28,12 +28,11 @@ class MonitoringReportAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'user', 'monitoring_indicator', 
         'description', 'generated_at', 'report_link')
-    search_fields = ('description',)
+    search_fields = ('description', 'generated_at')
 
 
 @admin.register(ScheduledTask)
 class ScheduledTaskAdmin(admin.ModelAdmin):
     list_display = ('id', 'task_name', 'status' , 'started_at', 'completed_at')
     search_fields = ('name',)
-    list_filter = ('status',)
-
+    list_filter = ('status', 'started_at', 'completed_at')

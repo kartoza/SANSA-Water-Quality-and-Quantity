@@ -12,25 +12,25 @@ from project.models.logs import (
 class APIUsageLogAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'endpoint', 'method', 'status_code', 'requested_at')
     search_fields = ('endpoint',)
-    list_filter = ('method',)
+    list_filter = ('method', 'requested_at')
 
 
 @admin.register(DataIngestionLog)
 class DataIngestionLogAdmin(admin.ModelAdmin):
-    list_display = ('id', 'api_log', 'data_source', 'fetched_at', 'status', 'message')
-    search_fields = ('data_source', 'message')
-    list_filter = ('status',)
+    list_display = ('id', 'api_log', 'data_source_file', 'fetched_at', 'status', 'message')
+    search_fields = ('data_source_file', 'message')
+    list_filter = ('status', 'fetched_at')
 
 
 @admin.register(ErrorLog)
 class ErrorLogAdmin(admin.ModelAdmin):
     list_display = ('id', 'api_log', 'task', 'module_name', 'error_type', 'error_message', 'occured_at')
     search_fields = ('error_message',)
-    list_filter = ('error_type',)
+    list_filter = ('error_type', 'occured_at')
 
 
 @admin.register(UserActivityLog)
 class UserActivityLogAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'activity_type', 'timestamp')
     search_fields = ('user__username',)
-    list_filter = ('activity_type',)
+    list_filter = ('activity_type', 'timestamp')
