@@ -9,3 +9,4 @@ logger = get_task_logger(__name__)
 def update_stored_data():
     """Update stored data."""
     logger.info('Updating stored data')
+    # TODO: Implement this task once function to crawl has been implemented.
