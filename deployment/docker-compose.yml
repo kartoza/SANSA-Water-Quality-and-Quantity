@@ -81,8 +81,18 @@ services:
   worker:
     <<: *default-common-django
     entrypoint: []
-    command: 'celery -A core worker -l info'
+    command: 'celery -A core worker -l info  --logfile=/tmp/worker.log'
     links:
+      - db
+      - redis
+      - celery_beat
+
+  celery_beat:
+    <<: *default-common-django
+    entrypoint: []
+    command: 'celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler --logfile=/tmp/celery_beat.log'
+    links:
+      - db
       - redis
 
   dev:

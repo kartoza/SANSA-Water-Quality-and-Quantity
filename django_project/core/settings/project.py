@@ -6,6 +6,7 @@ Adjust these values as needed but don't commit passwords etc. to any public
 repository!
 """
 import os  # noqa
+from celery.schedules import crontab
 
 from .contrib import *  # noqa
 
@@ -33,3 +34,11 @@ INSTALLED_APPS = INSTALLED_APPS + (
     'core',
     'project'
 )
+
+# Celery Beat
+CELERY_BEAT_SCHEDULE = {
+    'update_stored_data_monthly': {
+        'task': 'update_stored_data',
+        'schedule': crontab(minute='0', hour='0', day_of_week='*', day_of_month='1', month_of_year='*')
+    }
+}

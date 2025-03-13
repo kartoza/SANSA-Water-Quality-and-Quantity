@@ -1,4 +1,16 @@
 version: '3.9'
+
+x-common-dev-config: &common-dev-config
+  build:
+    context: ../
+    dockerfile: deployment/docker/Dockerfile
+    target: dev
+  volumes:
+    - ../:/home/web/project
+    - ../django_project:/home/web/django_project
+    - ./volumes/static:/home/web/static
+    - ./volumes/media:/home/web/media
+
 services:
   db:
     volumes:
@@ -22,27 +34,19 @@ services:
       - ./volumes/media:/home/web/media
 
   worker:
-    image: kartoza/${COMPOSE_PROJECT_NAME:-django_project}_dev
-    build:
-      context: ../
-      dockerfile: deployment/docker/Dockerfile
-      target: dev
+    <<: *common-dev-config
+
+  celery_beat:
+    <<: *common-dev-config
     volumes:
       - ../django_project:/home/web/django_project
       - ./volumes/static:/home/web/static
       - ./volumes/media:/home/web/media
 
   dev:
-    build:
-      context: ../
-      dockerfile: deployment/docker/Dockerfile
-      target: dev
+    <<: *common-dev-config
     image: kartoza/${COMPOSE_PROJECT_NAME:-django_project}_dev
     command: python -m debugpy --listen 0.0.0.0:5678 --wait manage.py runserver 0.0.0.0:8000
-    volumes:
-      - ../django_project:/home/web/django_project
-      - ./volumes/static:/home/web/static
-      - ./volumes/media:/home/web/media
 
   nginx:
     volumes:
