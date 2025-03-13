@@ -605,6 +605,174 @@ paths:
                 status: error
                 message: "An unexpected error occurred on the server"
 
+  /api/water-analysis/:
+    post:
+      summary: Trigger time-series analysis for eutrophication indicators
+      description: Starts an analysis of harmful algal blooms, their growth rate, spread, and density from Sentinel & Landsat data.
+      operationId: triggerAnalysis
+      tags:
+        - Water Analysis Jobs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                spatial_resolution:
+                  type: integer
+                  description: Spatial resolution of the output mask (in meters).
+                  example: 30
+                start_date:
+                  type: string
+                  format: date
+                  description: Start date of imagery dataset (YYYY-MM-DD).
+                  example: "2024-01-01"
+                end_date:
+                  type: string
+                  format: date
+                  description: End date of imagery dataset (YYYY-MM-DD).
+                  example: "2024-12-31"
+                bbox:
+                  type: array
+                  description: Bounding box coordinates (minLon, minLat, maxLon, maxLat).
+                  minItems: 4
+                  maxItems: 4
+                  items:
+                    type: number
+                  example: [102.0, 0.5, 103.0, 1.5]
+                input_type:
+                  type: string
+                  description: Imagery dataset type (Landsat or Sentinel).
+                  enum:
+                    - Landsat
+                    - Sentinel
+                  example: "Landsat"
+      responses:
+        "202":
+          description: Job started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  worker_id:
+                    type: string
+                    example: "abc123"
+        "400":
+          description: Bad request due to invalid parameters.
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Invalid bounding box coordinates."
+        "401":
+          description: Unauthorized request due to missing or invalid authentication token
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Missing or invalid authentication token"
+        "405":
+          description: Method Not Allowed
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Method Not Allowed"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                status: error
+                message: "An unexpected error occurred on the server"
+
+  /api/check-status/{worker_id}/:
+    get:
+      summary: Check the status of the analysis
+      description: Retrieves the current status of the analysis job and returns the processed data when finished.
+      operationId: checkStatus
+      tags:
+        - Water Analysis Jobs
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          description: Job status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["pending", "processing", "completed", "failed"]
+                    example: "processing"
+                  results:
+                    type: object
+                    nullable: true
+                    example: null
+        "200":
+          description: Analysis completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "completed"
+                  results:
+                    type: object
+                    properties:
+                      bloom_growth_rate:
+                        type: number
+                        example: 1.5
+                      spread_direction:
+                        type: string
+                        example: "North-East"
+                      total_coverage_days:
+                        type: integer
+                        example: 50
+                      density_flags:
+                        type: array
+                        items:
+                          type: string
+                        example: ["High", "Moderate", "Low"]
+        "404":
+          description: Worker ID not found
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Worker ID not found"
+        "401":
+          description: Unauthorized request due to missing or invalid authentication token
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Missing or invalid authentication token"
+        "405":
+          description: Method Not Allowed
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Method Not Allowed"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                status: error
+                message: "An unexpected error occurred on the server"
+
 #  /api/auth/token:
 #    post:
 #      summary: Generate Authentication Token
