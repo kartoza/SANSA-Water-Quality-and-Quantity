@@ -1,4 +1,5 @@
 from django.db import models
+from project.models.dataset import Dataset
 
 
 class Provider(models.Model):
@@ -10,6 +11,28 @@ class Provider(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class DataSourceFile(models.Model):
+    """
+    Stores information about raw data files received from providers.
+    """
+    name = models.TextField()
+    description = models.TextField(null=True, blank=True)
+    
+    dataset = models.ForeignKey(
+        Dataset,
+        on_delete=models.CASCADE
+    )
+    provider = models.ForeignKey(
+        Provider,
+        on_delete=models.CASCADE
+    )
+    
+    uploaded_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
