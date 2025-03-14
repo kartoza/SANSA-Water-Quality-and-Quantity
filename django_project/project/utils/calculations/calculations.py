@@ -17,7 +17,7 @@ def calculate_indices(image_path, bands, output_dir):
 
         # Create output file paths
         output_files = {
-            "AWEI_shadow": f"{output_dir}/AWEI_sh.tif",
+            "AWEI_sh": f"{output_dir}/AWEI_sh.tif",
             "AWEI_ns": f"{output_dir}/AWEI_ns.tif",
             "NDTI": f"{output_dir}/NDTI.tif",
             "NDCI": f"{output_dir}/NDCI.tif"
