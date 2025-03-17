@@ -32,3 +32,10 @@ redis==5.2.1
 
 # psycopg2 - Python-PostgreSQL Database Adapter
 psycopg2-binary==2.9.10
+
+# raster analysis
+rasterio==1.4.3
+odc-stac==0.3.11
+pystac_client==0.8.6
+netCDF4=1.7.2
+matplotlib==3.10.1
