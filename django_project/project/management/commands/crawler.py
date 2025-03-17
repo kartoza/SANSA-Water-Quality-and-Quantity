@@ -18,9 +18,8 @@ class Command(BaseCommand):
             start_date="2024-01-01",
             end_date="2024-01-31",
             bbox=[19.0718146707764333, -34.1046576825389707, 19.3240754498619083, -33.9548456688371942],
-            resolution=20,
-            values=["AWEI"],
-            export_cog=False
+            resolution=10,
+            export_nc=False
         )
         calculation.run()
 
