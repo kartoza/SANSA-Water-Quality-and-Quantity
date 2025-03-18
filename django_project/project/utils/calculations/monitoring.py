@@ -15,7 +15,7 @@ class CalculateMonitoring:
     """
     def __init__(self, start_date, end_date, bbox, 
                  resolution=20, export_plot=True, export_nc=True, 
-                 export_cog=True, calc_types=None
+                 export_cog=True, calc_types=None, task=None
                  ):
         self.bbox = bbox
         self.resolution = resolution
@@ -30,6 +30,8 @@ class CalculateMonitoring:
         self.uuid = str(uuid.uuid4())
         self.output_dir = os.path.join("/tmp", self.uuid)
         os.makedirs(self.output_dir, exist_ok=True)
+
+        self.task = task
 
         configure_rio(
             cloud_defaults=True
@@ -51,6 +53,8 @@ class CalculateMonitoring:
         # Search the STAC catalog for all items matching the query
         self.items = list(query.items())
         print(f"Found: {len(self.items):d} datasets")
+
+    
 
     def run_export_cog(self, month_data, cog_path):
         """Export to Cloud Optimized GeoTIFF.
@@ -101,6 +105,7 @@ class CalculateMonitoring:
         """Run the calculations.
         """
         print("stac load")
+
         ds = stac_load(
             self.items,
             bands=("blue", "red", "green", "nir", "swir16", "swir22"),

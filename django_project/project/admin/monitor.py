@@ -33,6 +33,6 @@ class MonitoringReportAdmin(admin.ModelAdmin):
 
 @admin.register(ScheduledTask)
 class ScheduledTaskAdmin(admin.ModelAdmin):
-    list_display = ('id', 'task_name', 'status' , 'started_at', 'completed_at')
+    list_display = ('uuid', 'task_name', 'status' , 'started_at', 'completed_at')
     search_fields = ('name',)
     list_filter = ('status', 'started_at', 'completed_at')

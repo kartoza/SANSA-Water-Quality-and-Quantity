@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
@@ -83,6 +84,12 @@ class ScheduledTask(models.Model):
         COMPLETED = 'completed', _('Completed')
         FAILED = 'failed', _('Failed')
 
+    uuid = models.UUIDField(
+        default=uuid.uuid4, 
+        editable=False,
+        primary_key=True
+    )
+
     task_name = models.CharField(
         null=False,
         blank=False,
@@ -92,7 +99,8 @@ class ScheduledTask(models.Model):
         choices=Status.choices,
         null=False,
         blank=False,
-        max_length=25
+        max_length=25,
+        default=Status.PENDING
     )
     started_at = models.DateTimeField()
     completed_at = models.DateTimeField(null=True, blank=True)
