@@ -5,7 +5,7 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 from odc.stac import configure_rio, stac_load
-from project.utils.calculations.calculation import Calculation
+from django_project.project.utils.calculations.monitoring import Calculation
 
 
 class Command(BaseCommand):

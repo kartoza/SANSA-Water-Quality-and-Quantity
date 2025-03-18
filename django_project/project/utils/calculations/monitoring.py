@@ -1,12 +1,15 @@
+import uuid
+import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
 from pystac_client import Client
 from odc.stac import configure_rio, stac_load
+from project.models import MonitoringIndicatorType
 
 
-class Calculation:
+class CalculateMonitoring:
     """
     Do calculations on the STAC data.
     """
@@ -22,7 +25,11 @@ class Calculation:
         self.export_cog = export_cog
         self.calc_types = calc_types
         if not calc_types:
-            self.calc_types = ["AWEI", "NDTI", "NDCI", "SABI", "CDOM"]
+            self.calc_types = MonitoringIndicatorType.Type.values
+
+        self.uuid = str(uuid.uuid4())
+        self.output_dir = os.path.join("/tmp", self.uuid)
+        os.makedirs(self.output_dir, exist_ok=True)
 
         configure_rio(
             cloud_defaults=True
@@ -131,9 +138,9 @@ class Calculation:
                 year = dt.year
                 month = dt.month
 
-                cog_path = f"/home/web/project/django_project/{calc_type}_{year}_{month:02d}.tif"
-                nc_path = f"/home/web/project/django_project/{calc_type}_{year}_{month:02d}.nc"
-                png_path = f"/home/web/project/django_project/{calc_type}_{year}_{month:02d}.png"
+                cog_path = os.path.join(self.output_dir, f"{calc_type}_{year}_{month:02d}.tif")
+                nc_path = os.path.join(self.output_dir, f"{calc_type}_{year}_{month:02d}.nc")
+                png_path = os.path.join(self.output_dir, f"{calc_type}_{year}_{month:02d}.png")
 
                 if self.export_plot:
                     self.run_export_plot(month_data, png_path, year, month, calc_type)
