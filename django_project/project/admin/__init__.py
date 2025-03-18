@@ -12,3 +12,4 @@ from .logs import (
     ErrorLogAdmin,
     UserActivityLog
 )
+from .external_data_source import ExternalDataSourceAdmin
