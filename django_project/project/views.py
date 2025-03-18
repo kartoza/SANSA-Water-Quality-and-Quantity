@@ -1,6 +1,10 @@
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, permissions
+from rest_framework.authentication import (
+    TokenAuthentication,
+    BasicAuthentication,
+    SessionAuthentication,
+)
+from rest_framework import permissions
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Count, Min, Max
 from .models import Dataset, DatasetType
@@ -14,6 +18,11 @@ class DatasetOverviewView(APIView, PageNumberPagination):
     Supports pagination.
     """
 
+    authentication_classes = [
+        TokenAuthentication,
+        BasicAuthentication,
+        SessionAuthentication,
+    ]
     permission_classes = [permissions.IsAuthenticated]
     page_size = 10
 
@@ -25,8 +34,9 @@ class DatasetOverviewView(APIView, PageNumberPagination):
             queryset = queryset.filter(dataset_type__name=dataset_type)
 
         total_entries = queryset.count()
-        categories = DatasetType.objects.values(
-            "name").annotate(count=Count("dataset"))
+        categories = DatasetType.objects.values("name").annotate(
+            count=Count("dataset")
+        )
         metadata = queryset.aggregate(
             min_date=Min("created_at"),
             max_date=Max("created_at"),

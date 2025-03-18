@@ -1,14 +1,4 @@
-from .dataset import DatasetAdmin, DatasetTypeAdmin
-from .monitor import (
-    MonitoringIndicatorAdmin, 
-    MonitoringIndicatorTypeAdmin, 
-    MonitoringReportAdmin, 
-    ScheduledTaskAdmin
-)
-from .provider import DataSourceFileAdmin, ProviderAdmin
-from .logs import (
-    APIUsageLogAdmin, 
-    DataIngestionLogAdmin, 
-    ErrorLogAdmin,
-    UserActivityLog
-)
+from project.admin.dataset import *
+from project.admin.monitor import *
+from project.admin.provider import *
+from project.admin.logs import *
