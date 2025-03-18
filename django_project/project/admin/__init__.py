@@ -1,15 +1,15 @@
-from .dataset import DatasetAdmin, DatasetTypeAdmin
-from .monitor import (
+from project.admin.dataset import DatasetAdmin, DatasetTypeAdmin
+from project.admin.monitor import (
     MonitoringIndicatorAdmin, 
     MonitoringIndicatorTypeAdmin, 
     MonitoringReportAdmin, 
     ScheduledTaskAdmin
 )
-from .provider import DataSourceFileAdmin, ProviderAdmin
-from .logs import (
+from project.admin.provider import DataSourceFileAdmin, ProviderAdmin
+from project.admin.logs import (
     APIUsageLogAdmin, 
     DataIngestionLogAdmin, 
     ErrorLogAdmin,
     UserActivityLog
 )
-from .external_data_source import ExternalDataSourceAdmin
+from project.admin.external_data_source import ExternalDataSourceAdmin

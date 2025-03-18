@@ -1,15 +1,15 @@
-from .dataset import Dataset, DatasetType
-from .provider import Provider, DataSourceFile
-from .monitor import (
+from project.models.dataset import Dataset, DatasetType
+from project.models.provider import Provider, DataSourceFile
+from project.models.monitor import (
     MonitoringIndicator, 
     MonitoringIndicatorType, 
     MonitoringReport, 
     ScheduledTask
 )
-from .logs import (
+from project.models.logs import (
     APIUsageLog, 
     DataIngestionLog, 
     ErrorLog,
     UserActivityLog
 )
-from .external_data_source import ExternalDataSource
+from project.models.external_data_source import ExternalDataSource

@@ -1,136 +1,61 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from rest_framework.authentication import TokenAuthentication
-from django.utils.dateparse import parse_date
-import datetime
-
-
-def compute_water_extent(
-        bbox,
-        spatial_resolution,
-        start_date,
-        end_date,
-        input_type
-        ):
-    """
-    Calculation of water surface area extent.
-    """
-
-    # Validate and parse dates
-    start_date = parse_date(start_date)
-    end_date = parse_date(end_date)
-
-    if not start_date or not end_date:
-        return {"error": "Invalid date format. Use YYYY-MM-DD."}
-
-    # Ensure end_date is after start_date
-    days_observed = (end_date - start_date).days
-    if days_observed <= 0:
-        return {"error": "End date must be after start date."}
-
-    # Validate bounding box
-    try:
-        bbox = [float(coord) for coord in bbox]
-        if len(bbox) != 4:
-            return {"error": "Bounding box must contain exactly 4 values."}
-    except ValueError:
-        return {"error": "Bounding box coordinates must be numeric."}
-
-    # Apply input_type-based scaling factor
-    resolution_factor = 1.0 if input_type == "Landsat" else 1.2
-    # Compute estimated water surface area
-    area_km2 = (
-        (bbox[2] - bbox[0])  # Longitude difference
-        * (bbox[3] - bbox[1])  # Latitude difference
-        * spatial_resolution
-        * resolution_factor
-        / 1000.0  # Convert meters to kilometers
-    )
-
-    return {
-        "area_km2": round(area_km2, 2),
-        "days_observed": days_observed,
-        "input_type": input_type,
-    }
-
-
-def generate_water_mask(bbox, spatial_resolution, input_type):
-    """
-    Generating a water mask URL.
-    """
-    return f"https://127.0.0.1:8000/awei/water_mask_{input_type}_{spatial_resolution}.tif"
+from rest_framework.authentication import (
+    TokenAuthentication,
+    BasicAuthentication,
+    SessionAuthentication,
+)
+from celery.result import AsyncResult
+from project.tasks import compute_water_extent_task, generate_water_mask_task
 
 
 class AWEIWaterExtentView(APIView):
     """
-    API to compute the Water Surface Area Extent dynamically.
+    API to compute the Water Surface Area Extent asynchronously.
     """
 
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [
+        TokenAuthentication,
+        BasicAuthentication,
+        SessionAuthentication,
+    ]
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         """
-        Query parameters:
-        - spatial_resolution: int (meters)
-        - start_date: str (YYYY-MM-DD)
-        - end_date: str (YYYY-MM-DD)
-        - bbox: list of 4 floats [minLon, minLat, maxLon, maxLat]
-        - input_type: str ("Landsat" or "Sentinel")
+        API Endpoint to trigger water surface area calculation.
         """
         try:
-            spatial_resolution = int(request.query_params.get(
-                "spatial_resolution", 30
-            ))
+            spatial_resolution = int(
+                request.query_params.get("spatial_resolution", 30)
+            )
             start_date = request.query_params.get("start_date")
             end_date = request.query_params.get("end_date")
-            bbox = request.query_params.getlist("bbox")
+            bbox = request.query_params.get("bbox")
             input_type = request.query_params.get("input_type", "Landsat")
 
-            # Validate bounding box
+            if bbox:
+                bbox = bbox.split(",")
+                bbox = [float(coord) for coord in bbox]
+            bbox_message = "Invalid bounding box format."
             if len(bbox) != 4:
                 return Response(
-                    {
-                        "status": "error",
-                        "message": "Invalid bounding box format. Expected 4 values.",
-                    },
+                    {"status": "error", "message": bbox_message},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Convert bbox to float values
+            # Convert bbox to float
             bbox = [float(coord) for coord in bbox]
 
-            # Validate date format
-            if not parse_date(start_date) or not parse_date(end_date):
-                return Response(
-                    {
-                        "status": "error",
-                        "message": "Invalid date format. Use YYYY-MM-DD.",
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if input_type not in ["Landsat", "Sentinel"]:
-                return Response(
-                    {
-                        "status": "error",
-                        "message": "Invalid input_type. Must be 'Landsat' or 'Sentinel'.",
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Compute water extent dynamically
-            water_extent_km2 = compute_water_extent(
+            # Send task to Celery
+            task = compute_water_extent_task.delay(
                 bbox, spatial_resolution, start_date, end_date, input_type
             )
 
             return Response(
-                {
-                    "status": "success",
-                    "data": {"bbox": bbox, "area_km2": water_extent_km2},
-                },
-                status=status.HTTP_200_OK,
+                {"status": "pending", "task_id": task.id},
+                status=status.HTTP_202_ACCEPTED,
             )
 
         except ValueError as e:
@@ -138,80 +63,85 @@ class AWEIWaterExtentView(APIView):
                 {"status": "error", "message": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class WaterExtentStatusView(APIView):
+    """
+    API to check the status of an async Water Extent Calculation.
+    """
+
+    authentication_classes = [
+        TokenAuthentication,
+        BasicAuthentication,
+        SessionAuthentication,
+    ]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, task_id):
+        """
+        Check the status of a Celery task.
+        """
+        task_result = AsyncResult(task_id)
+
+        if task_result.state == "SUCCESS":
+            return Response(
+                {"status": "completed", "data": task_result.result},
+                status=status.HTTP_200_OK,
+            )
+
+        elif task_result.state == "PENDING":
+            return Response(
+                {"status": "pending"}, status=status.HTTP_202_ACCEPTED
+            )
+
+        elif task_result.state == "FAILURE":
+            return Response(
+                {"status": "failed", "message": str(task_result.result)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(
+            {"status": "unknown"}, status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class AWEIWaterMaskView(APIView):
     """
-    API to generate a Water Mask dynamically.
+    API to generate the Water Mask asynchronously.
     """
 
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [
+        TokenAuthentication,
+        BasicAuthentication,
+        SessionAuthentication,
+    ]
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         """
-        Query parameters:
-        - spatial_resolution: int (meters)
-        - start_date: str (YYYY-MM-DD)
-        - end_date: str (YYYY-MM-DD)
-        - bbox: list of 4 floats [minLon, minLat, maxLon, maxLat]
-        - input_type: str ("Landsat" or "Sentinel")
+        API Endpoint to trigger water mask generation.
         """
         try:
-            spatial_resolution = int(request.query_params.get(
-                "spatial_resolution", 30
-            ))
-            start_date = request.query_params.get("start_date")
-            end_date = request.query_params.get("end_date")
-            bbox = request.query_params.getlist("bbox")
+            spatial_resolution = int(
+                request.query_params.get("spatial_resolution", 30)
+            )
+            bbox = request.query_params.get("bbox")
             input_type = request.query_params.get("input_type", "Landsat")
 
-            if len(bbox) != 4:
-                return Response(
-                    {
-                        "status": "error",
-                        "message": "Invalid bounding box format. Expected 4 values.",
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            if bbox:
+                bbox = bbox.split(",")
+                bbox = [float(coord) for coord in bbox]
 
             bbox = [float(coord) for coord in bbox]
 
-            if not parse_date(start_date) or not parse_date(end_date):
-                return Response(
-                    {
-                        "status": "error",
-                        "message": "Invalid date format. Use YYYY-MM-DD.",
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if input_type not in ["Landsat", "Sentinel"]:
-                return Response(
-                    {
-                        "status": "error",
-                        "message": "Invalid input_type. Must be 'Landsat' or 'Sentinel'.",
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Generate water mask dynamically
-            mask_url = generate_water_mask(
+            # Send task to Celery
+            task = generate_water_mask_task.delay(
                 bbox, spatial_resolution, input_type
             )
 
             return Response(
-                {
-                    "status": "success",
-                    "data": {
-                        "mask_url": mask_url,
-                        "bbox": bbox,
-                        "spatial_resolution": spatial_resolution,
-                        "input_type": input_type,
-                        "generated_date": datetime.date.today().isoformat(),
-                    },
-                },
-                status=status.HTTP_200_OK,
+                {"status": "pending", "task_id": task.id},
+                status=status.HTTP_202_ACCEPTED,
             )
 
         except ValueError as e:
@@ -219,3 +149,43 @@ class AWEIWaterMaskView(APIView):
                 {"status": "error", "message": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class WaterMaskStatusView(APIView):
+    """
+    API to check the status of an async Water Mask generation.
+    """
+
+    authentication_classes = [
+        TokenAuthentication,
+        BasicAuthentication,
+        SessionAuthentication,
+    ]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, task_id):
+        """
+        Check the status of a Celery task for water mask generation.
+        """
+        task_result = AsyncResult(task_id)
+
+        if task_result.state == "SUCCESS":
+            return Response(
+                {"status": "completed", "data": task_result.result},
+                status=status.HTTP_200_OK,
+            )
+
+        elif task_result.state == "PENDING":
+            return Response(
+                {"status": "pending"}, status=status.HTTP_202_ACCEPTED
+            )
+
+        elif task_result.state == "FAILURE":
+            return Response(
+                {"status": "failed", "message": str(task_result.result)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(
+            {"status": "unknown"}, status=status.HTTP_400_BAD_REQUEST
+        )

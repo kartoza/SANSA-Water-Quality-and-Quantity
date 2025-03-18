@@ -6,6 +6,7 @@ from .base import *  # noqa
 INSTALLED_APPS = INSTALLED_APPS + (
     'rest_framework',
     'rest_framework_gis',
+    'rest_framework.authtoken',
     'guardian',
     'django_cleanup.apps.CleanupConfig',
     'django_celery_beat',
