@@ -53,6 +53,6 @@ class DatasetAPITestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn(
-            "total_entries", response.data
+            "total_entries", response.data["results"]
         )  # Ensure total_entries is returned
-        self.assertEqual(response.data["total_entries"], 2)
+        self.assertEqual(response.data["results"]["total_entries"], 2)
