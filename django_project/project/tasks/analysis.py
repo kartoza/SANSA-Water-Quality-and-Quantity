@@ -1,27 +1,28 @@
 from celery.utils.log import get_task_logger
 from celery import shared_task
 from core.celery import app
-from project.utils.calculations.monitoring import CalculateMonitoring
-from project.models.monitor import ScheduledTask
+from project.utils.calculations.analysis import Analysis
+from project.models.monitor import AnalysisTask
 
 logger = get_task_logger(__name__)
 
 
-@app.task(name='run_calculation')
-def run_calculation(
+@app.task(name='run_analysis')
+def run_analysis(
     start_date, end_date, bbox, 
     resolution=20, export_plot=True, export_nc=True, 
     export_cog=True, calc_types=None, task_id=None
     ):
     """Run calculation."""
-
+    
     try:
-        task = ScheduledTask.objects.get(uuid=task_id)
-    except ScheduledTask.DoesNotExist:
+        task = AnalysisTask.objects.get(uuid=task_id)
+    except AnalysisTask.DoesNotExist:
         logger.error(f"Task with id {task_id} does not exist.")
         return
 
-    calculation = CalculateMonitoring(
+    task.start()
+    calculation = Analysis(
         start_date=start_date,
         end_date=end_date,
         bbox=bbox,
@@ -33,6 +34,5 @@ def run_calculation(
         task=task
     )
     calculation.run()
-
-    logger.info('Updating stored data')
+    task.complete()
     # TODO: Implement this task once function to crawl has been implemented.

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from unittest.mock import patch, MagicMock
 from django.test import TestCase
-from project.utils.calculations.monitoring import CalculateMonitoring
+from project.utils.calculations.analysis import CalculateMonitoring
 from project.models import MonitoringIndicatorType
 
 

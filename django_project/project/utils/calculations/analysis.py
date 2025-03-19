@@ -1,15 +1,19 @@
+import logging
 import uuid
 import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+from celery.utils.log import get_task_logger
 from pystac_client import Client
 from odc.stac import configure_rio, stac_load
 from project.models import MonitoringIndicatorType
 
+logger = get_task_logger(__name__)
 
-class CalculateMonitoring:
+
+class Analysis:
     """
     Do calculations on the STAC data.
     """
@@ -32,6 +36,7 @@ class CalculateMonitoring:
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.task = task
+        self.output = {}
 
         configure_rio(
             cloud_defaults=True
@@ -52,14 +57,18 @@ class CalculateMonitoring:
         )
         # Search the STAC catalog for all items matching the query
         self.items = list(query.items())
-        print(f"Found: {len(self.items):d} datasets")
+        self.add_log(f"Found: {len(self.items):d} datasets")
 
-    
+    def add_log(self, log, level=logging.INFO):
+        logger.log(level, log)
+        if self.task:
+            self.task.add_log(log, level=level)
 
     def run_export_cog(self, month_data, cog_path):
         """Export to Cloud Optimized GeoTIFF.
         """
-        import rioxarray 
+        import rioxarray
+        self.add_log(f"Saving COG: {cog_path}") 
         month_data.rio.to_raster(
             cog_path,
             driver="COG",
@@ -70,20 +79,20 @@ class CalculateMonitoring:
             nodata=np.nan,
             overview_resampling="nearest",
         )
-        print(f"Saved optimized COG: {cog_path}")
 
     def run_export_nc(self, month_data, nc_path):
         """Export to NetCDF.
         """
+        self.add_log(f"Saving NetCDF: {nc_path}")
         month_data.to_netcdf(
             nc_path,
             engine="netcdf4"
         )
-        print(f"Saved NetCDF: {nc_path}")
 
     def run_export_plot(self, month_data, png_path, year, month, calc_type):
         """Export to PNG format.
         """
+        self.add_log(f"Saving Plot: {png_path}")
         data_min = float(month_data.min().compute())
         data_max = float(month_data.max().compute())
         if data_min == data_max:
@@ -98,13 +107,26 @@ class CalculateMonitoring:
         plt.gca().set_title(f"{calc_type} - {year}-{month:02d}")
 
         plt.savefig(png_path, dpi=300, bbox_inches='tight')
-        print(f"Saved Plot: {png_path}")
         plt.close()
+
+    def save_output(self):
+        if self.task:
+            for calc_type, paths in self.output.items():
+                for path in paths:
+                    self.add_log(f"Saving output: {path}")
+                    self.task.task_outputs.create(
+                        file=path,
+                        monitoring_type=MonitoringIndicatorType.objects.get(
+                            monitoring_indicator_type=calc_type
+                        ),
+                        size=os.path.getsize(path),
+                        created_by=self.task.created_by
+                    )
 
     def run(self):
         """Run the calculations.
         """
-        print("stac load")
+        self.add_log("Loading STAC items")
 
         ds = stac_load(
             self.items,
@@ -116,15 +138,19 @@ class CalculateMonitoring:
             bbox=self.bbox,
         )
 
+        self.add_log("Scale & Resample with coords preserved")
         # Step 1: Scale & Resample with coords preserved
         scaled_ds = ds[["blue", "red", "green", "nir", "swir16", "swir22"]] / 10000.0
 
+        self.add_log("Resample monthly")
         # Step 2: Resample monthly
         monthly_ds = scaled_ds.resample(time="1M").mean()
 
         # Step 4: Calculate measurement
         for calc_type in self.calc_types:
-            print(f"calculate {calc_type}")
+            self.add_log(f"calculate {calc_type}")
+            self.output[calc_type] = []
+
             if calc_type == "AWEI":
                 monthly_ds[calc_type] = 1.0 * monthly_ds.blue + 2.5 * monthly_ds.green - 1.5 * (monthly_ds.nir + monthly_ds.swir16) - 0.25 * monthly_ds.swir22
             elif calc_type == "NDCI":
@@ -149,9 +175,14 @@ class CalculateMonitoring:
 
                 if self.export_plot:
                     self.run_export_plot(month_data, png_path, year, month, calc_type)
+                    self.output[calc_type].append(png_path)
                 
                 if self.export_nc:
                     self.run_export_nc(month_data, nc_path)
+                    self.output[calc_type].append(nc_path)
 
                 if self.export_cog:
                     self.run_export_cog(month_data, cog_path)
+                    self.output[calc_type].append(cog_path)
+
+        self.save_output()

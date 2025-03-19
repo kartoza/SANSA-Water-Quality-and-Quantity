@@ -5,7 +5,7 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 from odc.stac import configure_rio, stac_load
-from django_project.project.utils.calculations.monitoring import CalculateMonitoring
+from project.utils.calculations.analysis import Analysis
 
 
 class Command(BaseCommand):
@@ -14,7 +14,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         start = timezone.now()
 
-        calculation = CalculateMonitoring(
+        calculation = Analysis(
             start_date="2024-01-01",
             end_date="2024-01-31",
             bbox=[19.0718146707764333, -34.1046576825389707, 19.3240754498619083, -33.9548456688371942],

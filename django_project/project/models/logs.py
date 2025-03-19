@@ -1,8 +1,13 @@
+import uuid
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from project.models.provider import DataSourceFile
-from project.models.monitor import ScheduledTask
+from project.models.monitor import ScheduledTask, AnalysisTask
+
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.db import models
 
 User = get_user_model()
 
@@ -93,6 +98,25 @@ class ErrorLog(models.Model):
 
     def __str__(self):
         return f"Error {self.id} - {self.module_name}"
+
+
+class TaskLog(models.Model):
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    log = models.TextField()
+    level = models.IntegerField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.CharField(max_length=36, null=False, blank=False)
+    content_object = GenericForeignKey("content_type", "object_id")
+
+    def __str__(self):
+        return self.log
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["content_type", "object_id"]),
+        ]
+
 
 
 class UserActivityLog(models.Model):

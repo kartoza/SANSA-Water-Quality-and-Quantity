@@ -4,12 +4,15 @@ from .monitor import (
     MonitoringIndicator, 
     MonitoringIndicatorType, 
     MonitoringReport, 
-    ScheduledTask
+    ScheduledTask,
+    AnalysisTask,
+    TaskOutput
 )
 from .logs import (
     APIUsageLog, 
     DataIngestionLog, 
     ErrorLog,
-    UserActivityLog
+    UserActivityLog,
+    TaskLog
 )
 from .external_data_source import ExternalDataSource
