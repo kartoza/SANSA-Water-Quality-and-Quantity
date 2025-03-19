@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+	DatasetOverviewView,
     AWEIWaterExtentView,
     WaterExtentStatusView,
     AWEIWaterMaskView,
@@ -7,6 +8,7 @@ from .views import (
 )
 
 urlpatterns = [
+	path('datasets/', DatasetOverviewView.as_view(), name="datasets-overview"),
     path(
         "awei-water-extent/",
         AWEIWaterExtentView.as_view(),
