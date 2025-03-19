@@ -61,13 +61,13 @@ class DatasetOverviewView(APIView, PageNumberPagination):
             }
         )
 
-	
+
 class AWEIWaterExtentView(APIView):
     """
     API to compute the Water Surface Area Extent asynchronously.
-	"""
+    """
 
-	authentication_classes = [
+    authentication_classes = [
         TokenAuthentication,
         BasicAuthentication,
         SessionAuthentication,
@@ -240,3 +240,4 @@ class WaterMaskStatusView(APIView):
 
         return Response(
             {"status": "unknown"}, status=status.HTTP_400_BAD_REQUEST
+        )
