@@ -15,4 +15,4 @@ from project.models.logs import (
     UserActivityLog,
     TaskLog
 )
-from .external_data_source import ExternalDataSource
+from project.models.external_data_source import ExternalDataSource
