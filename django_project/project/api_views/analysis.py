@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.authentication import (
     TokenAuthentication,
@@ -8,8 +9,9 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework import status
 from project.utils.calculations.analysis import Analysis
-from project.models.monitor import ScheduledTask, MonitoringIndicatorType, AnalysisTask
+from project.models.monitor import MonitoringIndicatorType, AnalysisTask
 from project.tasks.analysis import run_analysis
+from project.serializers.monitoring import AnalysisTaskStatusSerializer
 
 
 class WaterAnalysisView(APIView):
@@ -65,7 +67,7 @@ class WaterAnalysisView(APIView):
         parameters.update({"task_id": task.uuid})
 
         try:
-            calc = run_analysis(**parameters)
+            calc = run_analysis.delay(**parameters)
 
             return Response(
                 {"message": {"task_id": task.uuid}},
@@ -78,3 +80,10 @@ class WaterAnalysisView(APIView):
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class AnalysisTaskStatusView(APIView):
+    def get(self, request, uuid):
+        task = get_object_or_404(AnalysisTask, uuid=uuid)
+        serializer = AnalysisTaskStatusSerializer(task, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)

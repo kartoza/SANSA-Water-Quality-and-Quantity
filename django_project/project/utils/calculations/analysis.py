@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from celery.utils.log import get_task_logger
 from pystac_client import Client
 from odc.stac import configure_rio, stac_load
+from django.core.files import File
 from project.models import MonitoringIndicatorType
 
 logger = get_task_logger(__name__)
@@ -114,14 +115,17 @@ class Analysis:
             for calc_type, paths in self.output.items():
                 for path in paths:
                     self.add_log(f"Saving output: {path}")
-                    self.task.task_outputs.create(
-                        file=path,
-                        monitoring_type=MonitoringIndicatorType.objects.get(
-                            monitoring_indicator_type=calc_type
-                        ),
-                        size=os.path.getsize(path),
-                        created_by=self.task.created_by
-                    )
+                    with open(path, 'rb') as f:
+                        django_file = File(f)
+                        output = self.task.task_outputs.create(
+                            monitoring_type=MonitoringIndicatorType.objects.get(
+                                monitoring_indicator_type=calc_type
+                            ),
+                            size=os.path.getsize(path),
+                            created_by=self.task.created_by
+                        )
+                        output.file.save(os.path.basename(path), django_file)
+                        os.remove(path)
 
     def run(self):
         """Run the calculations.
