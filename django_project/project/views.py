@@ -74,7 +74,7 @@ class AWEIWaterExtentView(APIView):
     ]
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
+    def post(self, request):
         """
         API Endpoint to trigger water surface area calculation.
         """
@@ -169,16 +169,16 @@ class AWEIWaterMaskView(APIView):
     ]
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
+    def post(self, request):
         """
         API Endpoint to trigger water mask generation.
         """
         try:
             spatial_resolution = int(
-                request.query_params.get("spatial_resolution", 30)
+                request.data.get("spatial_resolution", 30)
             )
-            bbox = request.query_params.get("bbox")
-            input_type = request.query_params.get("input_type", "Landsat")
+            bbox = request.data.get("bbox")
+            input_type = request.data.get("input_type", "Landsat")
 
             if bbox:
                 bbox = bbox.split(",")
