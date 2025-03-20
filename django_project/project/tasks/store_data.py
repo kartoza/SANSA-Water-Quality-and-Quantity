@@ -84,5 +84,5 @@ def generate_water_mask_task(bbox, spatial_resolution, input_type):
         "bbox": bbox,
         "spatial_resolution": spatial_resolution,
         "input_type": input_type,
-        "generated_date": datetime.date()
+        "generated_date": datetime.now().isoformat(),
     }

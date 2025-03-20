@@ -14,6 +14,46 @@ from celery.result import AsyncResult
 from project.tasks import compute_water_extent_task, generate_water_mask_task
 
 
+class BaseTaskStatusView(APIView):
+    """
+    Base API View to check the status of a Celery task.
+    """
+
+    authentication_classes = [
+        TokenAuthentication,
+        BasicAuthentication,
+        SessionAuthentication,
+    ]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, task_id):
+        """
+        Check the status of a Celery task.
+        """
+        task_result = AsyncResult(task_id)
+
+        if task_result.state == "SUCCESS":
+            return Response(
+                {"status": "completed", "data": task_result.result},
+                status=status.HTTP_200_OK,
+            )
+
+        elif task_result.state == "PENDING":
+            return Response(
+                {"status": "pending"}, status=status.HTTP_202_ACCEPTED
+            )
+
+        elif task_result.state == "FAILURE":
+            return Response(
+                {"status": "failed", "message": str(task_result.result)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(
+            {"status": "unknown"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+
 class DatasetOverviewView(APIView, PageNumberPagination):
     """
     Returns a summary of all stored datasets, including total records,
@@ -80,25 +120,23 @@ class AWEIWaterExtentView(APIView):
         """
         try:
             spatial_resolution = int(
-                request.query_params.get("spatial_resolution", 30)
+                request.data.get("spatial_resolution", 30)
             )
-            start_date = request.query_params.get("start_date")
-            end_date = request.query_params.get("end_date")
-            bbox = request.query_params.get("bbox")
-            input_type = request.query_params.get("input_type", "Landsat")
+            start_date = request.data.get("start_date")
+            end_date = request.data.get("end_date")
+            bbox = request.data.get("bbox")
+            input_type = request.data.get("input_type", "Landsat")
 
-            if bbox:
+            if isinstance(bbox, str):
                 bbox = bbox.split(",")
+            try:
                 bbox = [float(coord) for coord in bbox]
-            bbox_message = "Invalid bounding box format."
-            if len(bbox) != 4:
+            except ValueError:
+                bbox_message = "Invalid bounding box format."
                 return Response(
                     {"status": "error", "message": bbox_message},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-
-            # Convert bbox to float
-            bbox = [float(coord) for coord in bbox]
 
             # Send task to Celery
             task = compute_water_extent_task.delay(
@@ -117,44 +155,11 @@ class AWEIWaterExtentView(APIView):
             )
 
 
-class WaterExtentStatusView(APIView):
+class WaterExtentStatusView(BaseTaskStatusView):
     """
     API to check the status of an async Water Extent Calculation.
     """
-
-    authentication_classes = [
-        TokenAuthentication,
-        BasicAuthentication,
-        SessionAuthentication,
-    ]
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, task_id):
-        """
-        Check the status of a Celery task.
-        """
-        task_result = AsyncResult(task_id)
-
-        if task_result.state == "SUCCESS":
-            return Response(
-                {"status": "completed", "data": task_result.result},
-                status=status.HTTP_200_OK,
-            )
-
-        elif task_result.state == "PENDING":
-            return Response(
-                {"status": "pending"}, status=status.HTTP_202_ACCEPTED
-            )
-
-        elif task_result.state == "FAILURE":
-            return Response(
-                {"status": "failed", "message": str(task_result.result)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        return Response(
-            {"status": "unknown"}, status=status.HTTP_400_BAD_REQUEST
-        )
+    pass
 
 
 class AWEIWaterMaskView(APIView):
@@ -180,11 +185,16 @@ class AWEIWaterMaskView(APIView):
             bbox = request.data.get("bbox")
             input_type = request.data.get("input_type", "Landsat")
 
-            if bbox:
+            if isinstance(bbox, str):
                 bbox = bbox.split(",")
+            try:
                 bbox = [float(coord) for coord in bbox]
-
-            bbox = [float(coord) for coord in bbox]
+            except ValueError:
+                bbox_message = "Invalid bounding box format."
+                return Response(
+                    {"status": "error", "message": bbox_message},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             # Send task to Celery
             task = generate_water_mask_task.delay(
@@ -203,41 +213,8 @@ class AWEIWaterMaskView(APIView):
             )
 
 
-class WaterMaskStatusView(APIView):
+class WaterMaskStatusView(BaseTaskStatusView):
     """
     API to check the status of an async Water Mask generation.
     """
-
-    authentication_classes = [
-        TokenAuthentication,
-        BasicAuthentication,
-        SessionAuthentication,
-    ]
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, task_id):
-        """
-        Check the status of a Celery task for water mask generation.
-        """
-        task_result = AsyncResult(task_id)
-
-        if task_result.state == "SUCCESS":
-            return Response(
-                {"status": "completed", "data": task_result.result},
-                status=status.HTTP_200_OK,
-            )
-
-        elif task_result.state == "PENDING":
-            return Response(
-                {"status": "pending"}, status=status.HTTP_202_ACCEPTED
-            )
-
-        elif task_result.state == "FAILURE":
-            return Response(
-                {"status": "failed", "message": str(task_result.result)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        return Response(
-            {"status": "unknown"}, status=status.HTTP_400_BAD_REQUEST
-        )
+    pass
