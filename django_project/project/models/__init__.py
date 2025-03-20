@@ -12,4 +12,4 @@ from project.models.logs import (
     ErrorLog,
     UserActivityLog
 )
-from .external_data_source import ExternalDataSource
+from project.models.external_data_source import ExternalDataSource
