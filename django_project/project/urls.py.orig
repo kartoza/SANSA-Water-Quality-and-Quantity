@@ -1,0 +1,14 @@
+from django.urls import path
+<<<<<<< HEAD
+from project.api_views.analysis import WaterAnalysisView, AnalysisTaskStatusView
+
+urlpatterns = [
+    path('water-analysis/', WaterAnalysisView.as_view(), name="water-analysis"),
+    path('analysis-task/<uuid:uuid>/', AnalysisTaskStatusView.as_view(), name='analysis-task-status')
+=======
+from .views import DatasetOverviewView
+
+urlpatterns = [
+    path('datasets/', DatasetOverviewView.as_view(), name="datasets-overview"),
+>>>>>>> 8e7cc75439a688a48a57da613f3f690d345964f0
+]

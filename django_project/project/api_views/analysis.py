@@ -14,7 +14,7 @@ from project.tasks.analysis import run_analysis
 from project.serializers.monitoring import AnalysisTaskStatusSerializer
 
 
-class WaterAnalysisView(APIView):
+class WaterAnalysisAPIView(APIView):
     authentication_classes = [
         TokenAuthentication,
         BasicAuthentication,
@@ -70,7 +70,7 @@ class WaterAnalysisView(APIView):
             calc = run_analysis.delay(**parameters)
 
             return Response(
-                {"message": {"task_id": task.uuid}},
+                {"message": {"task_uuid": task.uuid}},
                 status=status.HTTP_200_OK,
             )
 
@@ -82,8 +82,8 @@ class WaterAnalysisView(APIView):
             )
 
 
-class AnalysisTaskStatusView(APIView):
-    def get(self, request, uuid):
-        task = get_object_or_404(AnalysisTask, uuid=uuid)
+class AnalysisTaskStatusAPIView(APIView):
+    def get(self, request, task_uuid):
+        task = get_object_or_404(AnalysisTask, uuid=task_uuid)
         serializer = AnalysisTaskStatusSerializer(task, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)

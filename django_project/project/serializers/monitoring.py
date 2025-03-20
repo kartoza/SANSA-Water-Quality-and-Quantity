@@ -4,12 +4,16 @@ from project.models import AnalysisTask, TaskOutput
 
 class TaskOutputSerializer(serializers.ModelSerializer):
     file = serializers.SerializerMethodField()
+    monitoring_type = serializers.SerializerMethodField()
 
     def get_file(self, obj):
         request = self.context.get('request')
         if request is not None:
             return request.build_absolute_uri(obj.file.url)
         return obj.file.url
+    
+    def get_monitoring_type(self, obj):
+        return obj.monitoring_type.monitoring_indicator_type
 
     class Meta:
         model = TaskOutput

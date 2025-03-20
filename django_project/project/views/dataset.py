@@ -7,8 +7,8 @@ from rest_framework.authentication import (
 from rest_framework import permissions
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Count, Min, Max
-from .models import Dataset, DatasetType
-from .serializers import DatasetSerializer
+from project.models import Dataset, DatasetType
+from project.serializers.dataset import DatasetSerializer
 
 
 class DatasetOverviewView(APIView, PageNumberPagination):
