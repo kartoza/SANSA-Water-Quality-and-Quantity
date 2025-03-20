@@ -607,8 +607,8 @@ paths:
 
   /api/water-analysis/:
     post:
-      summary: Trigger time-series analysis for eutrophication indicators
-      description: Starts an analysis of harmful algal blooms, their growth rate, spread, and density from Sentinel & Landsat data.
+      summary: Trigger analysis for eutrophication indicators
+      description: Starts an analysis of AWEI, NCDI, NDTI, SABI, and CDOM.
       operationId: triggerAnalysis
       tags:
         - Water Analysis Jobs
@@ -622,7 +622,7 @@ paths:
                 spatial_resolution:
                   type: integer
                   description: Spatial resolution of the output mask (in meters).
-                  example: 30
+                  example: 20
                 start_date:
                   type: string
                   format: date
@@ -641,13 +641,32 @@ paths:
                   items:
                     type: number
                   example: [102.0, 0.5, 103.0, 1.5]
-                input_type:
-                  type: string
-                  description: Imagery dataset type (Landsat or Sentinel).
-                  enum:
-                    - Landsat
-                    - Sentinel
-                  example: "Landsat"
+                calc_types:
+                  type: list
+                  description: Calculation/analysis types.
+                  items:
+                    type: string
+                  example: ["AWEI", "NDCI", "NDTI", "SABI", "CDOM"]
+                export_plot:
+                  type: boolean
+                  description: Export result as PNG plot.
+                  example: true
+                export_nc:
+                  type: boolean
+                  description: Export result as NetCDF.
+                  example: true
+                export_cog:
+                  type: boolean
+                  description: Export result as COG.
+                  example: true
+                # We currently only support Sentinel. Separate ticket will be made to support Landsat
+                # input_type:
+                #   type: string
+                #   description: Imagery dataset type (Landsat or Sentinel).
+                #   enum:
+                #     - Landsat
+                #     - Sentinel
+                #   example: "Landsat"
       responses:
         "202":
           description: Job started successfully
@@ -656,7 +675,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  worker_id:
+                  task_uuid:
                     type: string
                     example: "abc123"
         "400":
@@ -688,7 +707,7 @@ paths:
                 status: error
                 message: "An unexpected error occurred on the server"
 
-  /api/check-status/{worker_id}/:
+  /api/analysis-task/{task_uuid}/:
     get:
       summary: Check the status of the analysis
       description: Retrieves the current status of the analysis job and returns the processed data when finished.
@@ -730,20 +749,100 @@ paths:
                   results:
                     type: object
                     properties:
-                      bloom_growth_rate:
-                        type: number
-                        example: 1.5
-                      spread_direction:
-                        type: string
-                        example: "North-East"
-                      total_coverage_days:
-                        type: integer
-                        example: 50
-                      density_flags:
-                        type: array
-                        items:
+                      properties:
+                        uuid:
                           type: string
-                        example: ["High", "Moderate", "Low"]
+                          format: uuid
+                          example: "9e2ae848-f02e-453c-9e10-b59046c44161"
+                        task_name:
+                          type: string
+                          example: "Water Analysis admin"
+                        status:
+                          type: string
+                          enum: ["pending", "running", "completed", "failed"]
+                          example: "completed"
+                        parameters:
+                          type: object
+                          properties:
+                            bbox:
+                              type: array
+                              items:
+                                type: number
+                                format: float
+                              example: [19.071814670776433, -34.10465768253897, 19.32407544986191, -33.954845668837194]
+                            start_date:
+                              type: string
+                              format: date
+                              example: "2025-01-01"
+                            end_date:
+                              type: string
+                              format: date
+                              example: "2025-01-31"
+                            calc_types:
+                              type: array
+                              items:
+                                type: string
+                              example: ["SABI"]
+                            resolution:
+                              type: integer
+                              example: 20
+                            export_nc:
+                              type: boolean
+                              example: false
+                            export_cog:
+                              type: boolean
+                              example: true
+                            export_plot:
+                              type: boolean
+                              example: false
+                        started_at:
+                          type: string
+                          format: date-time
+                          example: "2025-03-20T03:08:39.405125Z"
+                        completed_at:
+                          type: string
+                          format: date-time
+                          example: "2025-03-20T03:10:40.422969Z"
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: "2025-03-20T03:08:39.362131Z"
+                        task_outputs:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                example: 21
+                              file:
+                                type: string
+                                format: uri
+                                example: "http://0.0.0.0:8000/media/2/9e2ae848-f02e-453c-9e10-b59046c44161/SABI_2025_01.tif"
+                              size:
+                                type: integer
+                                example: 4461618
+                              monitoring_type:
+                                type: integer
+                                example: 4
+                              created_at:
+                                type: string
+                                format: date-time
+                                example: "2025-03-20T03:10:40.415636Z"
+                      # bloom_growth_rate:
+                      #   type: number
+                      #   example: 1.5
+                      # spread_direction:
+                      #   type: string
+                      #   example: "North-East"
+                      # total_coverage_days:
+                      #   type: integer
+                      #   example: 50
+                      # density_flags:
+                      #   type: array
+                      #   items:
+                      #     type: string
+                      #   example: ["High", "Moderate", "Low"]
         "404":
           description: Worker ID not found
           content:

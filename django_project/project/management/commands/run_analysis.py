@@ -13,7 +13,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         start = timezone.now()
-
+        
         calculation = Analysis(
             start_date="2024-01-01",
             end_date="2024-01-31",

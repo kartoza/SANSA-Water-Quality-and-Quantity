@@ -556,6 +556,155 @@ If no token is provided or if the token is invalid, the request will return a `4
 
 This ensures comprehensive testing of input validation, edge cases, and boundary conditions.
 
+
+---
+
+### 1.5 Water Analysis
+
+**URL:** `/api/water-analysis`  
+**Content-Type:** `application/json`  
+**Method:** `GET`  
+**Description:** This endpoint run analysis for specified bbox, date, and analysis type. The supported analysis types are AWEI, NDCI, 
+NDTI, SABI, and CDOM. The supported outputs are COG, PNG, and NetCDF. It will return task ID, that user can pool on to check if it is
+already finished.
+
+#### Authentication
+
+All requests must include an `Authorization` header with a valid Bearer token:
+
+```
+Authorization: Bearer <your_token_here>
+```
+
+If no token is provided or if the token is invalid, the request will return a `401 Unauthorized` error.
+
+#### Request Parameters
+
+| Parameter          | Type   | Required | Description |
+|--------------------|--------|----------|-------------|
+| start_date        | Date (YYYY-MM-DD) | required | Dataset start date. |
+| end_date          | Date (YYYY-MM-DD) | required | Dataset end date. |
+| bbox             | array  | required  | Add a bounding box to filter data for specific areas. |
+| resolution | int    | optional | Spatial resolution. Default to 20 |
+| calc_types        | list | optional  | Default to all analysis types [AWEI, NDCI, NDTI, SABI, and CDOM] |
+| export_plot   | bool  | optional | Export analysis result as PNG plot with style. Default to True. |
+| export_nc   | bool  | optional | Export analysis result as NetCDF. Default to True. |
+| export_cog   | bool  | optional | Export analysis result as COG. Default to True. |
+
+#### Response Structure
+
+**Success Response (200 OK)**
+
+```json
+{
+    "message": {
+        "task_id": "9e2ae848-f02e-453c-9e10-b59046c44161"
+    }
+}
+```
+
+**Error Response (400 Bad request)**
+
+```json
+{
+  "status": "error",
+  "message": "Invalid bounding box"
+}
+```
+
+**401 Unauthorized** (When no token is provided or the token is invalid)
+
+```json
+{
+  "status": "error",
+  "message": "Missing or invalid authentication token"
+}
+```
+
+---
+
+### 1.6 Analysis Task Status
+
+**URL:** `/api/analysis-task/{task_uuid}`  
+**Content-Type:** `application/json`  
+**Method:** `GET`  
+**Description:** This endpoint returns the status of the specified analysis task.
+
+#### Authentication
+
+All requests must include an `Authorization` header with a valid Bearer token:
+
+```
+Authorization: Bearer <your_token_here>
+```
+
+If no token is provided or if the token is invalid, the request will return a `401 Unauthorized` error.
+
+#### Request Parameters
+
+| Parameter          | Type   | Required | Description |
+|--------------------|--------|----------|-------------|
+| task_uuid        | string | required | UUID of the task |
+
+#### Response Structure
+
+**Success Response (200 OK)**
+
+```json
+{
+    "uuid": "9e2ae848-f02e-453c-9e10-b59046c44161",
+    "task_name": "Water Analysis admin",
+    "status": "completed",
+    "parameters": {
+        "bbox": [
+            19.071814670776433,
+            -34.10465768253897,
+            19.32407544986191,
+            -33.954845668837194
+        ],
+        "end_date": "2025-01-31",
+        "export_nc": false,
+        "calc_types": [
+            "SABI"
+        ],
+        "export_cog": true,
+        "resolution": 20,
+        "start_date": "2025-01-01",
+        "export_plot": false
+    },
+    "started_at": "2025-03-20T03:08:39.405125Z",
+    "completed_at": "2025-03-20T03:10:40.422969Z",
+    "created_at": "2025-03-20T03:08:39.362131Z",
+    "task_outputs": [
+        {
+            "id": 21,
+            "file": "http://0.0.0.0:8000/media/2/9e2ae848-f02e-453c-9e10-b59046c44161/SABI_2025_01.tif",
+            "size": 4461618,
+            "monitoring_type": 4,
+            "created_at": "2025-03-20T03:10:40.415636Z"
+        }
+    ]
+}
+```
+
+**Error Response (400 Bad request)**
+
+```json
+{
+  "status": "error",
+  "message": "Invalid bounding box"
+}
+```
+
+**401 Unauthorized** (When no token is provided or the token is invalid)
+
+```json
+{
+  "status": "error",
+  "message": "Missing or invalid authentication token"
+}
+```
+
 # Authentication API - Token Generation
 
 ## Endpoint

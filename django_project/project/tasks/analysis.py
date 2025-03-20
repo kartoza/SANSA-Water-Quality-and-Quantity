@@ -1,3 +1,4 @@
+import logging
 from celery.utils.log import get_task_logger
 from celery import shared_task
 from core.celery import app
@@ -22,17 +23,21 @@ def run_analysis(
         return
 
     task.start()
-    calculation = Analysis(
-        start_date=start_date,
-        end_date=end_date,
-        bbox=bbox,
-        resolution=resolution,
-        export_nc=export_nc,
-        export_plot=export_plot,
-        export_cog=export_cog,
-        calc_types=calc_types,
-        task=task
-    )
-    calculation.run()
-    task.complete()
-    # TODO: Implement this task once function to crawl has been implemented.
+    try:
+        calculation = Analysis(
+            start_date=start_date,
+            end_date=end_date,
+            bbox=bbox,
+            resolution=resolution,
+            export_nc=export_nc,
+            export_plot=export_plot,
+            export_cog=export_cog,
+            calc_types=calc_types,
+            task=task
+        )
+        calculation.run()
+    except Exception as e:
+        task.add_log(str(e), logging.ERROR)
+        task.failed()
+    else:
+        task.complete()
