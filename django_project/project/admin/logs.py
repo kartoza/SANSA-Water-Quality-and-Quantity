@@ -4,7 +4,8 @@ from project.models.logs import (
     APIUsageLog, 
     DataIngestionLog, 
     ErrorLog,
-    UserActivityLog
+    UserActivityLog,
+    TaskLog
 )
 
 
@@ -34,3 +35,11 @@ class UserActivityLogAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'activity_type', 'timestamp')
     search_fields = ('user__username',)
     list_filter = ('activity_type', 'timestamp')
+
+
+@admin.register(TaskLog)
+class TaskLogAdmin(admin.ModelAdmin):
+    list_display = ('uuid', 'log', 'level', 'timestamp', 'content_type', 'object_id')
+    search_fields = ('uuid', 'log')
+    list_filter = ('level', 'timestamp', 'content_type')
+    ordering = ('-timestamp',)

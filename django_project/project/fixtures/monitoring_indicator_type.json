@@ -1,0 +1,47 @@
+[
+    {
+        "model": "project.monitoringindicatortype",
+        "pk": 1,
+        "fields": {
+            "name": "AWEI",
+            "description": "Automated Water Extraction Index",
+            "monitoring_indicator_type": "AWEI"
+        }
+    },
+    {
+        "model": "project.monitoringindicatortype",
+        "pk": 2,
+        "fields": {
+            "name": "NDTI",
+            "description": "Normalized Difference Turbidity Index",
+            "monitoring_indicator_type": "NDTI"
+        }
+    },
+    {
+        "model": "project.monitoringindicatortype",
+        "pk": 3,
+        "fields": {
+            "name": "NDCI",
+            "description": "Normalized Difference Chlorophyll Index",
+            "monitoring_indicator_type": "NDCI"
+        }
+    },
+    {
+        "model": "project.monitoringindicatortype",
+        "pk": 4,
+        "fields": {
+            "name": "SABI",
+            "description": "Surface Algal Bloom Index",
+            "monitoring_indicator_type": "SABI"
+        }
+    },
+    {
+        "model": "project.monitoringindicatortype",
+        "pk": 5,
+        "fields": {
+            "name": "CDOM",
+            "description": "Colored Dissolved Organic Matter",
+            "monitoring_indicator_type": "CDOM"
+        }
+    }
+]

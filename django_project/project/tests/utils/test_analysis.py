@@ -5,15 +5,17 @@ import numpy as np
 import pandas as pd
 from unittest.mock import patch, MagicMock
 from django.test import TestCase
-from project.utils.calculations.monitoring import CalculateMonitoring
+from project.utils.calculations.analysis import Analysis
 from project.models import MonitoringIndicatorType
 
 
-class CalculationFileGenerationTest(TestCase):
+class AnalysisFileGenerationTest(TestCase):
 
-    @patch("project.utils.calculations.monitoring.uuid.uuid4")
-    @patch("project.utils.calculations.monitoring.Client")
-    @patch("project.utils.calculations.monitoring.stac_load")
+    fixtures = ["monitoring_indicator_type.json"]
+
+    @patch("project.utils.calculations.analysis.uuid.uuid4")
+    @patch("project.utils.calculations.analysis.Client")
+    @patch("project.utils.calculations.analysis.stac_load")
     def test_files_are_generated(self, mock_stac_load, mock_client, mock_uuid):
         # Mock UUID
         mock_uuid.return_value = "12345678-1234-5678-1234-567812345678"
@@ -41,7 +43,7 @@ class CalculationFileGenerationTest(TestCase):
 
         # Override the default export path inside the CalculateMonitoring to use tmpdir
         with tempfile.TemporaryDirectory() as tmpdir:
-            calc = CalculateMonitoring(
+            calc = Analysis(
                 start_date="2024-02-01",
                 end_date="2024-02-29",
                 bbox=[-10, -10, 10, 10]

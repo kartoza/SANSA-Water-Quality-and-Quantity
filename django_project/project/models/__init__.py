@@ -4,12 +4,15 @@ from project.models.monitor import (
     MonitoringIndicator, 
     MonitoringIndicatorType, 
     MonitoringReport, 
-    ScheduledTask
+    ScheduledTask,
+    AnalysisTask,
+    TaskOutput
 )
 from project.models.logs import (
     APIUsageLog, 
     DataIngestionLog, 
     ErrorLog,
-    UserActivityLog
+    UserActivityLog,
+    TaskLog
 )
-from .external_data_source import ExternalDataSource
+from project.models.external_data_source import ExternalDataSource
