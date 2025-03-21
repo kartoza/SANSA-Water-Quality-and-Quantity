@@ -67,7 +67,7 @@ class WaterAnalysisAPIViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["task_name"], f"Water Analysis {self.user.username}")
         self.assertEqual(response.data["uuid"], str(task_id))
-        self.assertEqual(response.data["status"], "completed")
+        self.assertEqual(response.data["status"], "SUCCESS")
         self.assertEqual(
             response.data["parameters"], 
             {
@@ -84,6 +84,7 @@ class WaterAnalysisAPIViewTest(APITestCase):
                 "resolution": 20,
                 "start_date": "2024-01-01",
                 "export_plot": True,
+                "task_id": task_id.hex
             }
         )
         self.assertEqual(len(response.data["task_outputs"]), 6)

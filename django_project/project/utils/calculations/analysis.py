@@ -113,6 +113,7 @@ class Analysis:
     def save_output(self):
         if self.task:
             for calc_type, paths in self.output.items():
+                new_paths = []
                 for path in paths:
                     self.add_log(f"Saving output: {path}")
                     with open(path, 'rb') as f:
@@ -126,6 +127,7 @@ class Analysis:
                         )
                         output.file.save(os.path.basename(path), django_file)
                         os.remove(path)
+                        new_paths.append(output.file.url)
 
     def run(self):
         """Run the calculations.
@@ -190,3 +192,4 @@ class Analysis:
                     self.output[calc_type].append(cog_path)
 
         self.save_output()
+        return self.output

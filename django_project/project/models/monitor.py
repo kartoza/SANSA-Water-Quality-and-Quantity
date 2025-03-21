@@ -1,5 +1,6 @@
 import logging
 import uuid
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -146,6 +147,7 @@ class AnalysisTask(models.Model):
         on_delete=models.CASCADE
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    celery_task_id = models.UUIDField(null=True, blank=True)
 
     def __str__(self):
         return self.task_name

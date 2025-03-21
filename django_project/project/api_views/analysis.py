@@ -5,6 +5,8 @@ from rest_framework.authentication import (
     BasicAuthentication,
     SessionAuthentication,
 )
+ 
+from celery.result import AsyncResult
 from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework import status
@@ -64,10 +66,12 @@ class WaterAnalysisAPIView(APIView):
             created_by=self.request.user,
             parameters=parameters,
         )
-        parameters.update({"task_id": task.uuid})
+        parameters.update({"task_id": task.uuid.hex})
 
         try:
-            calc = run_analysis.delay(**parameters)
+            result = run_analysis.delay(**parameters)
+            task.celery_task_id = result.id
+            task.save()
 
             return Response(
                 {"message": {"task_uuid": task.uuid}},
@@ -75,7 +79,7 @@ class WaterAnalysisAPIView(APIView):
             )
 
         except Exception as e:
-            task.complete()
+            task.failed()
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -85,5 +89,9 @@ class WaterAnalysisAPIView(APIView):
 class AnalysisTaskStatusAPIView(APIView):
     def get(self, request, task_uuid):
         task = get_object_or_404(AnalysisTask, uuid=task_uuid)
+        result = AsyncResult(task.celery_task_id)
         serializer = AnalysisTaskStatusSerializer(task, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        response = serializer.data
+        response['status'] = result.status
+        return Response(response, status=status.HTTP_200_OK)

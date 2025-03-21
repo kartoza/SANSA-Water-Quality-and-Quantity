@@ -1,4 +1,5 @@
 import logging
+from celery import current_app
 from celery.utils.log import get_task_logger
 from celery import shared_task
 from core.celery import app
@@ -8,13 +9,15 @@ from project.models.monitor import AnalysisTask
 logger = get_task_logger(__name__)
 
 
-@app.task(name='run_analysis')
+@app.task(bind=True, name='run_analysis')
 def run_analysis(
-    start_date, end_date, bbox, 
+    self, start_date, end_date, bbox, 
     resolution=20, export_plot=True, export_nc=True, 
     export_cog=True, calc_types=None, task_id=None
     ):
     """Run calculation."""
+
+    self.update_state(state="RUNNING")
     
     try:
         task = AnalysisTask.objects.get(uuid=task_id)
@@ -39,5 +42,8 @@ def run_analysis(
     except Exception as e:
         task.add_log(str(e), logging.ERROR)
         task.failed()
+        self.update_state(state="FAILURE")
     else:
         task.complete()
+        self.update_state(state="SUCCESS")
+    return calculation.output
