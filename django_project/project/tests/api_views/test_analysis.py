@@ -25,10 +25,10 @@ class WaterAnalysisAPIViewTest(APITestCase):
         self.user = UserFactory()
         self.client.force_authenticate(user=self.user)
 
-    @patch("project.utils.calculations.analysis.Client")
-    @patch("project.utils.calculations.analysis.stac_load")
-    def test_creates_actual_file(self, mock_stac_load, mock_client):   
-        # Mock stac_load to return dummy xarray.Dataset with necessary bands
+    def setup_data(self, mock_stac_load, mock_client):
+        """Setup dummy data for processing.
+        """
+
         mock_search = MagicMock()
         mock_search.items.return_value = [MagicMock()] * 5
         mock_client.open.return_value.search.return_value = mock_search
@@ -59,6 +59,17 @@ class WaterAnalysisAPIViewTest(APITestCase):
         # Trigger view POST
         url = reverse("water-analysis")
         response = self.client.post(url, payload, format="json")
+        return response
+
+    @patch("project.utils.calculations.analysis.Client")
+    @patch("project.utils.calculations.analysis.stac_load")
+    def test_creates_actual_file(self, mock_stac_load, mock_client):   
+        """
+        Test that the view creates expected output files.
+        """
+        # Mock stac_load to return dummy xarray.Dataset with necessary bands
+        response = self.setup_data(mock_stac_load, mock_client)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         task_id = response.data["message"]["task_uuid"]
 
@@ -111,3 +122,25 @@ class WaterAnalysisAPIViewTest(APITestCase):
         self.assertTrue(ndci_outputs, 3)
         for output in awei_outputs + ndci_outputs:
             self.assertTrue(os.path.exists(output))
+
+
+    @patch("project.utils.calculations.analysis.Client")
+    @patch("project.utils.calculations.analysis.stac_load")
+    def test_no_duplicate_task(self, mock_stac_load, mock_client):   
+        """Test that AnalysisTask with same parameters will not be created twice.
+        """
+
+        # Before running analysis, no AnalysisTask should exist
+        self.assertEqual(AnalysisTask.objects.count(), 0)
+        
+        # Mock stac_load to return dummy xarray.Dataset with necessary bands
+        response = self.setup_data(mock_stac_load, mock_client)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        task_id = response.data["message"]["task_uuid"]
+    
+        # After running analysis, 1 AnalysisTask should be created
+        self.assertEqual(AnalysisTask.objects.count(), 1)
+        
+        # After running analysis with same parameter, new AnalysisTask should NOT be created
+        self.setup_data(mock_stac_load, mock_client)
+        self.assertEqual(AnalysisTask.objects.count(), 1)

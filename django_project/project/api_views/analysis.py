@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.authentication import (
@@ -61,11 +62,25 @@ class WaterAnalysisAPIView(APIView):
             "export_cog": export_cog,
             "calc_types": calc_types,
         }
-        task = AnalysisTask.objects.create(
-            task_name=f"Water Analysis {self.request.user.username}",
-            created_by=self.request.user,
-            parameters=parameters,
-        )
+        normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
+        try:
+            task, created = AnalysisTask.objects.get_or_create(
+                parameters=normalized_parameters,
+                defaults={
+                    "task_name": f"Water Analysis {self.request.user.username}",
+                    "created_by": self.request.user,
+                }
+            )
+        except AnalysisTask.MultipleObjectsReturned:
+            task = AnalysisTask.objects.filter(
+                parameters=parameters
+            ).order_by('-created_at').first()
+            created = False
+        if not created:
+            return Response(
+                {"message": {"task_uuid": task.uuid}},
+                status=status.HTTP_200_OK,
+            )
         parameters.update({"task_id": task.uuid.hex})
 
         try:
