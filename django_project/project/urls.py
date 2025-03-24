@@ -1,11 +1,14 @@
 from django.urls import path
-from project.api_views.analysis import WaterAnalysisAPIView, AnalysisTaskStatusAPIView
-from project.views.dataset import DatasetOverviewView
-from .views import (
+from project.api_views import (
+    WaterAnalysisAPIView,
+    AnalysisTaskStatusAPIView,
     AWEIWaterExtentView,
     WaterExtentStatusView,
     AWEIWaterMaskView,
     WaterMaskStatusView,
+)
+from project.views.dataset import (
+    DatasetOverviewView,
 )
 
 urlpatterns = [
@@ -18,7 +21,7 @@ urlpatterns = [
         name="awei-water-extent"
     ),
     path(
-        "awei-water-extent/status/<str:task_id>/",
+        "awei-water-extent/status/<uuid:task_uuid>/",
         WaterExtentStatusView.as_view(),
         name="water-extent-status",
     ),
@@ -28,7 +31,7 @@ urlpatterns = [
         name="awei-water-mask"
     ),
     path(
-        "awei-water-mask/status/<str:task_id>/",
+        "awei-water-mask/status/<uuid:task_uuid>/",
         WaterMaskStatusView.as_view(),
         name="water-mask-status",
     ),
