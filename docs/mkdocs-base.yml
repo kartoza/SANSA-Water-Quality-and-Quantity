@@ -49,4 +49,9 @@ nav:
                   - License: about/license.md
                   - Contributing: about/contributing.md
                   - Disclaimer: about/disclaimer.md
-
+        - Developer:
+                  - Developer: developer/index.md
+                  - Architecture: developer/architecture.md
+                  - Data Model: developer/data-model.md
+                  - Manual: developer/manual/index.md
+                  - API: developer/api/guide/index.md
