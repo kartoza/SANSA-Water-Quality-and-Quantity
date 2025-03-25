@@ -1,11 +1,11 @@
-site_name: Project Name
+site_name: Water Quantity and Quality Monitoring
 site_description: "Project technical and user documentation."
 site_author: "Kartoza"
 docs_dir: ./src
 site_dir: ./site
-repo_name: "Project Name"
-repo_url: "https://github.com/kartoza/<project name>"
-edit_uri: "https://github.com/kartoza/<project name>/blob/main/docs/"
+repo_name: "Water Quantity and Quality Monitoring"
+repo_url: "https://github.com/kartoza/SANSA-Water-Quality-and-Quantity"
+edit_uri: "https://github.com/kartoza/SANSA-Water-Quality-and-Quantity/blob/main/docs/"
 
 copyright: Kartoza and Contributors
 
