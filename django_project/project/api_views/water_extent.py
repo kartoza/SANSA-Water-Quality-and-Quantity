@@ -14,7 +14,6 @@ from project.serializers.monitoring import AnalysisTaskStatusSerializer
 from project.tasks.water_extent import (
     compute_water_extent_task, generate_water_mask_task
 )
-import traceback
 
 
 class BaseTaskStatusView(APIView):
@@ -41,6 +40,12 @@ class BaseTaskStatusView(APIView):
         
         response = serializer.data
         response['status'] = result.status
+
+        if result.status == "SUCCESS" and isinstance(result.result, dict):
+            # Only inject known extra fields if present
+            if "area_km2" in result.result:
+                response["area_km2"] = result.result["area_km2"]
+
         return Response(response, status=status.HTTP_200_OK)
 
 
@@ -60,85 +65,78 @@ class AWEIWaterExtentView(APIView):
         """
         API Endpoint to trigger water surface area calculation.
         """
+        spatial_resolution = int(
+            request.data.get("spatial_resolution", 30)
+        )
+        start_date = request.data.get("start_date")
+        end_date = request.data.get("end_date")
+        bbox = request.data.get("bbox")
+        input_type = request.data.get("input_type", "Landsat")
+
+        if isinstance(bbox, str):
+            bbox = bbox.split(",")
         try:
-            spatial_resolution = int(
-                request.data.get("spatial_resolution", 30)
-            )
-            start_date = request.data.get("start_date")
-            end_date = request.data.get("end_date")
-            bbox = request.data.get("bbox")
-            input_type = request.data.get("input_type", "Landsat")
-
-            if isinstance(bbox, str):
-                bbox = bbox.split(",")
-            try:
-                bbox = [float(coord) for coord in bbox]
-            except ValueError:
-                bbox_message = "Invalid bounding box format."
-                return Response(
-                    {"status": "error", "message": bbox_message},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Build parameter dict
-            parameters = {
-                "bbox": bbox,
-                "spatial_resolution": spatial_resolution,
-                "start_date": start_date,
-                "end_date": end_date,
-                "input_type": input_type,
-            }
-
-            # Normalize parameter ordering to avoid duplicate mismatch
-            normalized_parameters = json.loads(
-                json.dumps(parameters, sort_keys=True)
+            bbox = [float(coord) for coord in bbox]
+        except ValueError:
+            bbox_message = "Invalid bounding box format."
+            return Response(
+                {"status": "error", "message": bbox_message},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-            # Check if task with same parameters already exists
-            try:
-                task, created = AnalysisTask.objects.get_or_create(
-                    parameters=normalized_parameters,
-                    defaults={
-                        "task_name": f"Water Extent - {request.user.username}",
-                        "created_by": request.user,
-                    }
-                )
-            except AnalysisTask.MultipleObjectsReturned:
-                task = AnalysisTask.objects.filter(
-                    parameters=normalized_parameters
-                ).order_by('-created_at').first()
-                created = False
+        # Build parameter dict
+        parameters = {
+            "bbox": bbox,
+            "spatial_resolution": spatial_resolution,
+            "start_date": start_date,
+            "end_date": end_date,
+            "input_type": input_type,
+        }
 
-            if not created:
-                return Response(
-                    {
-                        "message": "Task with same parameters already exists.",
-                        "task_uuid": task.uuid,
-                        "status": task.status,
-                    },
-                    status=status.HTTP_200_OK,
-                )
+        # Normalize parameter ordering to avoid duplicate mismatch
+        normalized_parameters = json.loads(
+            json.dumps(parameters, sort_keys=True)
+        )
 
-            # Trigger Celery task
-            parameters.update({"task_id": str(task.uuid)})
+        # Check if task with same parameters already exists
+        try:
+            task, created = AnalysisTask.objects.get_or_create(
+                parameters=normalized_parameters,
+                defaults={
+                    "task_name": f"Water Extent - {request.user.username}",
+                    "created_by": request.user,
+                }
+            )
+        except AnalysisTask.MultipleObjectsReturned:
+            task = AnalysisTask.objects.filter(
+                parameters=normalized_parameters
+            ).order_by('-created_at').first()
+            created = False
+
+        if not created:
+            return Response(
+                {
+                    "message": {"task_uuid": task.uuid},
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Trigger Celery task
+        parameters.update({"task_id": str(task.uuid)})
+        try:
             result = compute_water_extent_task.delay(**parameters)
             task.celery_task_id = result.id
             task.save()
 
             return Response(
-                {"status": "completed", "task_uuid": task.uuid},
+                {"message": {"task_uuid": task.uuid}},
                 status=status.HTTP_200_OK,
             )
 
-        except ValueError as e:
-            return Response(
-                {"status": "error", "message": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         except Exception as e:
+            task.failed()
             return Response(
-                {"status": "error", "message": f"Unexpected error: {str(e)}"},
+                {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -166,79 +164,73 @@ class AWEIWaterMaskView(APIView):
         """
         API Endpoint to trigger water mask generation.
         """
+        spatial_resolution = int(
+            request.data.get("spatial_resolution", 10)
+        )
+        bbox = request.data.get("bbox")
+        input_type = request.data.get("input_type", "Sentinel")
+
+        if isinstance(bbox, str):
+            bbox = bbox.split(",")
         try:
-            spatial_resolution = int(
-                request.data.get("spatial_resolution", 10)
-            )
-            bbox = request.data.get("bbox")
-            input_type = request.data.get("input_type", "Sentinel")
-
-            if isinstance(bbox, str):
-                bbox = bbox.split(",")
-            try:
-                bbox = [float(coord) for coord in bbox]
-            except ValueError:
-                bbox_message = "Invalid bounding box format."
-                return Response(
-                    {"status": "error", "message": bbox_message},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Define parameters
-            parameters = {
-                "bbox": bbox,
-                "spatial_resolution": spatial_resolution,
-                "input_type": input_type,
-            }
-
-            normalized_parameters = json.loads(
-                json.dumps(parameters, sort_keys=True)
+            bbox = [float(coord) for coord in bbox]
+        except ValueError:
+            bbox_message = "Invalid bounding box format."
+            return Response(
+                {"status": "error", "message": bbox_message},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-            try:
-                task, created = AnalysisTask.objects.get_or_create(
-                    parameters=normalized_parameters,
-                    defaults={
-                        "task_name": f"Water Mask - {request.user.username}",
-                        "created_by": request.user,
-                    }
-                )
-            except AnalysisTask.MultipleObjectsReturned:
-                task = AnalysisTask.objects.filter(
-                    parameters=normalized_parameters
-                ).order_by('-created_at').first()
-                created = False
+        # Define parameters
+        parameters = {
+            "bbox": bbox,
+            "spatial_resolution": spatial_resolution,
+            "input_type": input_type,
+        }
 
-            if not created:
-                return Response(
-                    {
-                        "message": "Task with same parameters already exists.",
-                        "task_uuid": task.uuid,
-                        "status": task.status,
-                    },
-                    status=status.HTTP_200_OK,
-                )
+        normalized_parameters = json.loads(
+            json.dumps(parameters, sort_keys=True)
+        )
 
-            parameters.update({"task_id": str(task.uuid)})
+        try:
+            task, created = AnalysisTask.objects.get_or_create(
+                parameters=normalized_parameters,
+                defaults={
+                    "task_name": f"Water Mask - {request.user.username}",
+                    "created_by": request.user,
+                }
+            )
+        except AnalysisTask.MultipleObjectsReturned:
+            task = AnalysisTask.objects.filter(
+                parameters=normalized_parameters
+            ).order_by('-created_at').first()
+            created = False
+
+        if not created:
+            return Response(
+                {
+                    "message": "Task with same parameters already exists.",
+                    "task_uuid": task.uuid,
+                    "status": task.status,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        parameters.update({"task_id": str(task.uuid)})
+        try:
             result = generate_water_mask_task.delay(**parameters)
             task.celery_task_id = result.id
             task.save()
 
             return Response(
-                {"status": "completed", "task_uuid": task.uuid},
+                {"message": {"task_uuid": task.uuid}},
                 status=status.HTTP_200_OK,
             )
 
-        except ValueError as e:
-            return Response(
-                {"status": "error", "message": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         except Exception as e:
-            print(traceback.format_exc())  # Or use logging
+            task.failed()
             return Response(
-                {"status": "error", "message": f"Unexpected error: {str(e)}"},
+                {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
