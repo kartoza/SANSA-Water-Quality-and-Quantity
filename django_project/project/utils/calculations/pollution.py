@@ -57,10 +57,13 @@ class PollutionAnalyzer:
                         out_image[out_image != src.nodata]
                     )
                     results.append(
-                        {"name": source["name"], "mean_index": mean_pollution}
+                        {
+                            "id": source["id"],
+                            "mean_index": float(mean_pollution) if mean_pollution is not None else None
+                        }
                     )
                 except Exception as e:
-                    logging.warning(f"Skipping {source['name']}: {str(e)}")
+                    logging.warning(f"Skipping {source['id']}: {str(e)}")
 
         with open(output_json, "w") as f:
             json.dump(results, f, indent=4)
