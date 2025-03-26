@@ -64,28 +64,22 @@ class WaterAnalysisAPIView(APIView):
         }
         normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
 
-        # task = AnalysisTask.objects.filter(
-        #     parameters=parameters,
-        #     status=AnalysisTask.Status.COMPLETED
-        # ).order_by('-created_at').first()
+        task = AnalysisTask.objects.filter(
+            parameters=parameters,
+            status=AnalysisTask.Status.COMPLETED
+        ).order_by('-created_at').first()
 
-        # if task:
-        #     return Response(
-        #         {"message": {"task_uuid": task.uuid}},
-        #         status=status.HTTP_200_OK,
-        #     )
-        # else:
-        #     task = AnalysisTask.objects.create(
-        #         parameters=normalized_parameters,
-        #         task_name=f"Water Analysis {self.request.user.username}",
-        #         created_by=self.request.user,
-        #     )
-        
-        task = AnalysisTask.objects.create(
-            parameters=normalized_parameters,
-            task_name=f"Water Analysis {self.request.user.username}",
-            created_by=self.request.user,
-        )
+        if task:
+            return Response(
+                {"message": {"task_uuid": task.uuid}},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            task = AnalysisTask.objects.create(
+                parameters=normalized_parameters,
+                task_name=f"Water Analysis {self.request.user.username}",
+                created_by=self.request.user,
+            )
         parameters.update({"task_id": task.uuid.hex})
 
         try:
