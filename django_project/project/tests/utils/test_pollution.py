@@ -1,16 +1,20 @@
 import os
 import json
 from django.test import TestCase
+from django_project.core.settings.utils import absolute_path
 from project.utils.calculations.pollution import PollutionAnalyzer
+
+
+TEST_DATA_PATH = absolute_path('project', 'tests', 'data'),
 
 
 class PollutionAnalyzerRealDataTest(TestCase):
     def setUp(self):
-        self.ndti_raster = "data/NDTI_2024_01.tif"
-        self.ndci_raster = "data/NDCI_2024_01.tif"
-        self.point_sources = "data/point_sources.shp"
-        self.non_point_sources = "data/non_point_sources.shp"
-        self.output_dir = "data/test_reports"
+        self.ndti_raster = os.path.join(TEST_DATA_PATH, 'NDTI_2024_01.tif')
+        self.ndci_raster = os.path.join(TEST_DATA_PATH, 'NDCI_2024_01.tif')
+        self.point_sources = os.path.join(TEST_DATA_PATH, 'point_sources.shp')
+        self.non_point_sources = os.path.join(TEST_DATA_PATH, 'non_point_sources.shp')
+        self.output_dir = os.path.join(TEST_DATA_PATH, 'test_reports')
 
         os.makedirs(self.output_dir, exist_ok=True)
 

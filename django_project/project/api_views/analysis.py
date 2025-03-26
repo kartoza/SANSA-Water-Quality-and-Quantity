@@ -102,10 +102,15 @@ class WaterAnalysisAPIView(APIView):
 
 
 class AnalysisTaskStatusAPIView(APIView):
+    """
+    API View to check the status of a Celery task.
+    """
+    
     def get(self, request, task_uuid):
         task = get_object_or_404(AnalysisTask, uuid=task_uuid)
         result = AsyncResult(task.celery_task_id)
-        serializer = AnalysisTaskStatusSerializer(task, context={'request': request})
+        serializer = AnalysisTaskStatusSerializer(
+            task, context={'request': request})
         
         response = serializer.data
         response['status'] = result.status
