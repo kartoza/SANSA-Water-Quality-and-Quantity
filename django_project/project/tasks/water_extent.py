@@ -43,7 +43,10 @@ def compute_water_extent_task(
         awei_type = str(MonitoringIndicatorType.Type.AWEI)
         awei_output = (
             TaskOutput.objects
-            .filter(monitoring_type__monitoring_indicator_type__iexact=awei_type)
+            .filter(
+                monitoring_type__monitoring_indicator_type__iexact=awei_type,
+                task=task
+            )
             .order_by("-created_at")
             .first()
         )
@@ -109,7 +112,10 @@ def generate_water_mask_task(
         awei_type = str(MonitoringIndicatorType.Type.AWEI)
         awei_output = (
             TaskOutput.objects
-            .filter(monitoring_type__monitoring_indicator_type__iexact=awei_type)
+            .filter(
+                monitoring_type__monitoring_indicator_type__iexact=awei_type,
+                task=task
+            )
             .order_by("-created_at")
             .first()
         )
