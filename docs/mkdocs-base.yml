@@ -53,5 +53,16 @@ nav:
                   - Developer: developer/index.md
                   - Architecture: developer/architecture.md
                   - Data Model: developer/data-model.md
-                  - Manual: developer/manual/index.md
-                  - API: developer/api/guide/index.md
+                  - Manual:
+                        - Overview: developer/manual/index.md
+                        - Models: developer/manual/functions/models.md
+                        - Functions:
+                                - Utils: developer/manual/functions/utils.md
+                                - Serializers: developer/manual/functions/serializer.md
+                                - Tasks: developer/manual/functions/tasks.md
+                        
+                  - API: 
+                        - Overview: developer/api/guide/index.md
+                        - Water Extent: developer/api/guide/water-extent.md
+                        - Analysis: developer/api/guide/analysis-api.md
+                        - Dataset: developer/api/guide/dataset-api.md

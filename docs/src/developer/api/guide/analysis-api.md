@@ -12,8 +12,8 @@ Triggers the execution of a water monitoring analysis using satellite imagery (e
 The task is executed asynchronously via Celery and results are stored under a unique `task_uuid`.
 
 ### Authentication
-✅ Token / Basic / Session  
-🔒 Requires login (`IsAuthenticated`)
+Token / Basic / Session  
+Requires login (`IsAuthenticated`)
 
 ### Request Body (JSON)
 | Field           | Type      | Required | Default | Description |
