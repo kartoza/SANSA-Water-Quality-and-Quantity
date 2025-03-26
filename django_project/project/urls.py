@@ -1,6 +1,6 @@
 from django.urls import path
 from project.api_views.analysis import WaterAnalysisAPIView, AnalysisTaskStatusAPIView
-from project.views.dataset import DatasetOverviewView
+from project.api_views.dataset import DatasetOverviewView
 
 urlpatterns = [
     path('datasets/', DatasetOverviewView.as_view(), name="datasets-overview"),
