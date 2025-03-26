@@ -43,7 +43,7 @@ class ScheduledTaskAdmin(admin.ModelAdmin):
 class TaskOutputInline(admin.TabularInline):
     model = TaskOutput
     extra = 0
-    fields = ('file', 'monitoring_type', 'created_at')
+    fields = ('file', 'monitoring_type', 'created_at', 'created_by')
     readonly_fields = ('created_at',)
     show_change_link = True
 
