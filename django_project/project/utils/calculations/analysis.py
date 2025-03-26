@@ -1,15 +1,20 @@
 import logging
 import uuid
 import os
+import rioxarray
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import geopandas as gpd
+from rasterio.features import shapes
+from shapely.geometry import shape
 
 from celery.utils.log import get_task_logger
 from pystac_client import Client
 from odc.stac import configure_rio, stac_load
 from django.core.files import File
 from project.models import MonitoringIndicatorType
+from project.utils.calculations.water_extent import generate_water_mask_from_tif
 
 logger = get_task_logger(__name__)
 
@@ -18,10 +23,12 @@ class Analysis:
     """
     Do calculations on the STAC data.
     """
-    def __init__(self, start_date, end_date, bbox, 
-                 resolution=20, export_plot=True, export_nc=True, 
-                 export_cog=True, calc_types=None, task=None
-                 ):
+    def __init__(
+            self, start_date, end_date, bbox, 
+            resolution=20, export_plot=True, export_nc=True, 
+            export_cog=True, calc_types=None, task=None, 
+            mask_path=None
+        ):
         self.bbox = bbox
         self.resolution = resolution
         self.crs = "EPSG:6933"
@@ -38,10 +45,15 @@ class Analysis:
 
         self.task = task
         self.output = {}
+        self.mask_path = mask_path
 
         configure_rio(
             cloud_defaults=True
         )
+
+        self.mask = None
+        if mask_path and os.path.exists(mask_path):
+            self.mask = rioxarray.open_rasterio(mask_path).isel(band=0)
 
         # Open the stac catalogue
         catalog = Client.open("https://earth-search.aws.element84.com/v1")
@@ -68,7 +80,6 @@ class Analysis:
     def run_export_cog(self, month_data, cog_path):
         """Export to Cloud Optimized GeoTIFF.
         """
-        import rioxarray
         self.add_log(f"Saving COG: {cog_path}") 
         month_data.rio.to_raster(
             cog_path,
@@ -129,6 +140,40 @@ class Analysis:
                         os.remove(path)
                         new_paths.append(output.file.url)
 
+    def apply_mask(self, data_array):
+        """Applies the raster mask if available, ensuring proper CRS."""
+        if self.mask is not None:
+            self.add_log("Applying mask to data")
+
+            # Ensure mask has a CRS
+            if self.mask.rio.crs is None:
+                raise ValueError("Mask raster has no CRS. Please provide a valid georeferenced mask.")
+
+            # Reproject mask if needed
+            if self.mask.rio.crs != data_array.rio.crs:
+                self.add_log(f"Reprojecting mask from {self.mask.rio.crs} to {data_array.rio.crs}")
+                self.mask = self.mask.rio.reproject(data_array.rio.crs)
+
+            # Convert raster mask to vector polygons
+            self.add_log("Converting raster mask to polygons")
+            mask_array = self.mask.values
+            mask_transform = self.mask.rio.transform()
+
+            # Extract valid polygons and convert to Shapely objects
+            polygons = [shape(geom) for geom, value in shapes(mask_array, transform=mask_transform) if value > 0]
+
+            if not polygons:
+                raise ValueError("No valid mask polygons found.")
+
+            # Create GeoDataFrame correctly
+            mask_gdf = gpd.GeoDataFrame(geometry=polygons, crs=self.mask.rio.crs)
+
+            # Clip data using Shapely geometries
+            data_array = data_array.rio.clip(mask_gdf.geometry, all_touched=True)
+
+        return data_array
+
+
     def run(self):
         """Run the calculations.
         """
@@ -170,6 +215,7 @@ class Analysis:
 
             for time_val in monthly_ds.time.values:
                 month_data = monthly_ds.get(calc_type).sel(time=time_val)
+                month_data = self.apply_mask(month_data)
 
                 dt = pd.to_datetime(str(time_val))
                 year = dt.year
@@ -189,6 +235,10 @@ class Analysis:
 
                 if self.export_cog:
                     self.run_export_cog(month_data, cog_path)
+                    if calc_type == "AWEI":
+                        cog_path = generate_water_mask_from_tif(
+                            cog_path, threshold=0.0
+                        )['mask_path']
                     self.output[calc_type].append(cog_path)
 
         self.save_output()

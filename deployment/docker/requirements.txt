@@ -40,3 +40,4 @@ pystac_client==0.8.6
 netCDF4==1.7.2
 matplotlib==3.10.1
 rioxarray==0.18.2
+geopandas==1.0.1

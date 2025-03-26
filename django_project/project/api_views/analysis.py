@@ -41,8 +41,8 @@ class WaterAnalysisAPIView(APIView):
 
         # Optional fields with defaults
         resolution = data.get("resolution", 20)
-        export_plot = data.get("export_plot", True)
-        export_nc = data.get("export_nc", True)
+        export_plot = data.get("export_plot", False)
+        export_nc = data.get("export_nc", False)
         export_cog = data.get("export_cog", True)
         calc_types = data.get("calc_types", MonitoringIndicatorType.Type.values)  # Can be None
         for calc_type in calc_types:
@@ -63,30 +63,36 @@ class WaterAnalysisAPIView(APIView):
             "calc_types": calc_types,
         }
         normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
-        try:
-            task, created = AnalysisTask.objects.get_or_create(
-                parameters=normalized_parameters,
-                defaults={
-                    "task_name": f"Water Analysis {self.request.user.username}",
-                    "created_by": self.request.user,
-                }
-            )
-        except AnalysisTask.MultipleObjectsReturned:
-            task = AnalysisTask.objects.filter(
-                parameters=parameters
-            ).order_by('-created_at').first()
-            created = False
-        if not created:
-            return Response(
-                {"message": {"task_uuid": task.uuid}},
-                status=status.HTTP_200_OK,
-            )
+
+        # task = AnalysisTask.objects.filter(
+        #     parameters=parameters,
+        #     status=AnalysisTask.Status.COMPLETED
+        # ).order_by('-created_at').first()
+
+        # if task:
+        #     return Response(
+        #         {"message": {"task_uuid": task.uuid}},
+        #         status=status.HTTP_200_OK,
+        #     )
+        # else:
+        #     task = AnalysisTask.objects.create(
+        #         parameters=normalized_parameters,
+        #         task_name=f"Water Analysis {self.request.user.username}",
+        #         created_by=self.request.user,
+        #     )
+        
+        task = AnalysisTask.objects.create(
+            parameters=normalized_parameters,
+            task_name=f"Water Analysis {self.request.user.username}",
+            created_by=self.request.user,
+        )
         parameters.update({"task_id": task.uuid.hex})
 
         try:
             result = run_analysis.delay(**parameters)
             task.celery_task_id = result.id
             task.save()
+            # result = run_analysis(**parameters)
 
             return Response(
                 {"message": {"task_uuid": task.uuid}},
