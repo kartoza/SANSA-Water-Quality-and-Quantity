@@ -4,7 +4,6 @@ import os
 from rasterio.windows import Window
 
 
-
 def calculate_water_extent_from_tif(tif_path, threshold=0.0):
     with rasterio.open(tif_path) as src:
         awei = src.read(1)
