@@ -7,4 +7,4 @@ class ProjectConfig(AppConfig):
 
     def ready(self):
         """App ready handler."""
-        from project.tasks import update_stored_data  # noqa
+        from project.tasks.store_data import update_stored_data  # noqa

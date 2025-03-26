@@ -1,5 +1,9 @@
+import logging
+import uuid
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from project.models.dataset import Dataset
 
@@ -83,6 +87,12 @@ class ScheduledTask(models.Model):
         COMPLETED = 'completed', _('Completed')
         FAILED = 'failed', _('Failed')
 
+    uuid = models.UUIDField(
+        default=uuid.uuid4, 
+        editable=False,
+        primary_key=True
+    )
+
     task_name = models.CharField(
         null=False,
         blank=False,
@@ -92,10 +102,109 @@ class ScheduledTask(models.Model):
         choices=Status.choices,
         null=False,
         blank=False,
-        max_length=25
+        max_length=25,
+        default=Status.PENDING
     )
     started_at = models.DateTimeField()
     completed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.task_name
+    
+
+class AnalysisTask(models.Model):
+    """
+    Tracks analysis tasks.
+    """
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('Pending')
+        RUNNING = 'running', _('Running')
+        COMPLETED = 'completed', _('Completed')
+        FAILED = 'failed', _('Failed')
+
+    uuid = models.UUIDField(
+        default=uuid.uuid4, 
+        editable=False,
+        primary_key=True
+    )
+    task_name = models.CharField(
+        null=False,
+        blank=False,
+        max_length=100
+    )
+    status = models.CharField(
+        choices=Status.choices,
+        null=False,
+        blank=False,
+        max_length=25,
+        default=Status.PENDING
+    )
+    parameters = models.JSONField(default=dict)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    celery_task_id = models.UUIDField(null=True, blank=True)
+
+    def __str__(self):
+        return self.task_name
+    
+    def start(self):
+        self.status = self.Status.RUNNING
+        self.started_at = timezone.now()
+        self.save()
+
+    def complete(self):
+        self.status = self.Status.COMPLETED
+        self.completed_at = timezone.now()
+        self.save()
+
+    def failed(self):
+        self.status = self.Status.FAILED
+        self.completed_at = timezone.now()
+        self.save()
+
+    def add_log(self, log, level=logging.INFO):
+        from project.models.logs import TaskLog
+
+        task_log = TaskLog(
+            content_object=self,
+            log=log,
+            level=level,
+        )
+        task_log.save()
+
+
+def output_layer_dir_path(instance, filename):
+    """Return upload directory path for Output Layer."""
+    file_path = f'{str(instance.created_by.pk)}/{str(instance.task.uuid)}/'
+    file_path = file_path + filename
+    return file_path
+
+
+class TaskOutput(models.Model):
+    """Output of a task.
+    """
+
+    task = models.ForeignKey(
+        AnalysisTask,
+        related_name='task_outputs',
+        on_delete=models.CASCADE
+    )
+
+    file = models.FileField(
+        upload_to=output_layer_dir_path
+    )
+    size = models.BigIntegerField(default=0)
+    monitoring_type = models.ForeignKey(
+        MonitoringIndicatorType,
+        on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )

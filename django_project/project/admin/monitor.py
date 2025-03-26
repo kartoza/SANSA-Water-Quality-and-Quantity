@@ -4,7 +4,9 @@ from project.models.monitor import (
     MonitoringIndicator, 
     MonitoringIndicatorType, 
     MonitoringReport, 
-    ScheduledTask
+    ScheduledTask,
+    AnalysisTask,
+    TaskOutput
 )
 
 @admin.register(MonitoringIndicatorType)
@@ -33,6 +35,33 @@ class MonitoringReportAdmin(admin.ModelAdmin):
 
 @admin.register(ScheduledTask)
 class ScheduledTaskAdmin(admin.ModelAdmin):
-    list_display = ('id', 'task_name', 'status' , 'started_at', 'completed_at')
+    list_display = ('uuid', 'task_name', 'status' , 'started_at', 'completed_at')
     search_fields = ('name',)
     list_filter = ('status', 'started_at', 'completed_at')
+
+
+class TaskOutputInline(admin.TabularInline):
+    model = TaskOutput
+    extra = 0
+    fields = ('file', 'monitoring_type', 'created_at')
+    readonly_fields = ('created_at',)
+    show_change_link = True
+
+
+@admin.register(AnalysisTask)
+class AnalysisTaskAdmin(admin.ModelAdmin):
+    list_display = ('task_name', 'status', 'created_by', 'created_at', 'started_at', 'completed_at')
+    list_filter = ('status', 'created_at', 'started_at', 'completed_at')
+    search_fields = ('task_name', 'created_by__username')
+    readonly_fields = ('uuid', 'started_at', 'created_at', 'completed_at')
+    inlines = [TaskOutputInline]
+    ordering = ('-created_at',)
+
+
+@admin.register(TaskOutput)
+class TaskOutputAdmin(admin.ModelAdmin):
+    list_display = ('task', 'monitoring_type', 'file', 'created_by', 'created_at')
+    list_filter = ('monitoring_type', 'created_by')
+    search_fields = ('task__task_name', 'monitoring_type__name', 'created_by__username')
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
