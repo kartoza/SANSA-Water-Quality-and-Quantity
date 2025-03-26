@@ -10,11 +10,11 @@ from project.models import AnalysisTask
 
 
 class Command(BaseCommand):
-    help = 'This is a custom command that prints a simple message.'
+    help = 'This is a custom command to manually call Analysis.'
 
     def handle(self, *args, **options):
         start = timezone.now()
-        task = AnalysisTask.objects.get(uuid='e6d83fad-c5c4-46e8-9fa3-2d5daedc07b5')
+        # task = AnalysisTask.objects.get(uuid='e6d83fad-c5c4-46e8-9fa3-2d5daedc07b5')
 
         parameters = {
             "bbox": [19.071814670776433, -34.10465768253897, 19.32407544986191, -33.954845668837194], 
@@ -25,8 +25,8 @@ class Command(BaseCommand):
             "resolution": 20, 
             "start_date": "2025-01-01", 
             "export_plot": False,
-            "task": task,
-            "mask_path": "/home/web/media/2/e6d83fad-c5c4-46e8-9fa3-2d5daedc07b5/AWEI_2025_01_mask.tif"
+            # "task": task,
+            # "mask_path": "/home/web/media/2/e6d83fad-c5c4-46e8-9fa3-2d5daedc07b5/AWEI_2025_01_mask.tif"
         }
         
         calculation = Analysis(**parameters)
