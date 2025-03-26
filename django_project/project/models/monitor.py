@@ -16,6 +16,7 @@ class MonitoringIndicatorType(models.Model):
     """
     class Type(models.TextChoices):
         AWEI = 'AWEI', _('AWEI')
+        AWEI_MASK = 'AWEI_MASK', _('AWEI_MASK')
         NDTI = 'NDTI', _('NDTI')
         NDCI = 'NDCI', _('NDCI')
         SABI = 'SABI', _('SABI')
