@@ -5,8 +5,7 @@ from django_project.core.settings.utils import absolute_path
 from project.utils.calculations.pollution import PollutionAnalyzer
 
 
-TEST_DATA_PATH = absolute_path('project', 'tests', 'data'),
-
+TEST_DATA_PATH = absolute_path('project', 'tests', 'data')
 
 class PollutionAnalyzerRealDataTest(TestCase):
     def setUp(self):
