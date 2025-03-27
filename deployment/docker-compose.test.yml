@@ -1,6 +1,9 @@
 version: '3.9'
 
 x-common-test-config: &common-test-config
+  depends_on:
+    db:
+      condition: service_healthy
   build:
     context: ../
     dockerfile: deployment/docker/Dockerfile
