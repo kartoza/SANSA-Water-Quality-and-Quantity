@@ -6,7 +6,9 @@ from project.api_views import (
     WaterExtentStatusView,
     AWEIWaterMaskView,
     WaterMaskStatusView,
-    DatasetOverviewView
+)
+from project.api_views.dataset import (
+    DatasetOverviewView,
 )
 
 urlpatterns = [
