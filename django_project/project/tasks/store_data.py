@@ -5,11 +5,8 @@ from datetime import datetime, timedelta
 import calendar
 from celery.utils.log import get_task_logger
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 from core.celery import app
 
-from rest_framework.response import Response
-from rest_framework import status
 from project.models.monitor import AnalysisTask
 from project.tasks.analysis import run_analysis
 
