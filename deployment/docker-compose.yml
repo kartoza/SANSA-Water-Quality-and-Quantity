@@ -52,6 +52,12 @@ services:
       - POSTGRES_DBNAME=${DATABASE_NAME:-django}
       - POSTGRES_USER=${DATABASE_USERNAME:-docker}
       - POSTGRES_PASS=${DATABASE_PASSWORD:-docker}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $POSTGRES_DBNAME -U $POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   dbbackups:
     image: kartoza/pg-backup:14-3.3
