@@ -8,14 +8,17 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
             name='DatasetType',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id',
+                 models.BigAutoField(auto_created=True,
+                                     primary_key=True,
+                                     serialize=False,
+                                     verbose_name='ID')),
                 ('name', models.TextField()),
                 ('description', models.TextField(blank=True, null=True)),
             ],
@@ -23,7 +26,11 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Provider',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id',
+                 models.BigAutoField(auto_created=True,
+                                     primary_key=True,
+                                     serialize=False,
+                                     verbose_name='ID')),
                 ('name', models.TextField()),
                 ('description', models.TextField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
@@ -33,12 +40,18 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Dataset',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id',
+                 models.BigAutoField(auto_created=True,
+                                     primary_key=True,
+                                     serialize=False,
+                                     verbose_name='ID')),
                 ('name', models.TextField()),
                 ('description', models.TextField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('dataset_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='project.datasettype')),
+                ('dataset_type',
+                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                   to='project.datasettype')),
             ],
         ),
     ]

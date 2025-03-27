@@ -1,11 +1,14 @@
 import rasterio
 import numpy as np
 
-
 # use this bands for Sentinel-2.
 bands_sentinel2 = {
-    "blue": 2, "green": 3, "red": 4, 
-    "nir": 8, "swir1": 11, "swir2": 12, 
+    "blue": 2,
+    "green": 3,
+    "red": 4,
+    "nir": 8,
+    "swir1": 11,
+    "swir2": 12,
     "red_edge": 5
 }
 
@@ -42,8 +45,12 @@ def calculate_indices(image_path, bands, output_dir):
                 # Compute indices
                 awei_sh = (4 * (green - swir1)) - (0.25 * nir) + (2.75 * swir2)
                 awei_ns = blue + (2.5 * green) - (1.5 * (nir + swir1)) - (0.25 * swir2)
-                ndti = np.divide((red - green), (red + green), out=np.zeros_like(red), where=(red + green) != 0)
-                ndci = np.divide((red_edge - red), (red_edge + red), out=np.zeros_like(red), where=(red_edge + red) != 0)
+                ndti = np.divide((red - green), (red + green),
+                                 out=np.zeros_like(red),
+                                 where=(red + green) != 0)
+                ndci = np.divide((red_edge - red), (red_edge + red),
+                                 out=np.zeros_like(red),
+                                 where=(red_edge + red) != 0)
 
                 # Write output
                 dst_awei_sh.write(awei_sh.astype(rasterio.float32), window=window, indexes=1)

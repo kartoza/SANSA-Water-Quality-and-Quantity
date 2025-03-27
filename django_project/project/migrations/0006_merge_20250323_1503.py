@@ -10,5 +10,4 @@ class Migration(migrations.Migration):
         ('project', '0005_analysistask_celery_task_id'),
     ]
 
-    operations = [
-    ]
+    operations = []

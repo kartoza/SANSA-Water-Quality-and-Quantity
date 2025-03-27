@@ -34,25 +34,19 @@ class DatasetOverviewView(APIView, PageNumberPagination):
             queryset = queryset.filter(dataset_type__name=dataset_type)
 
         total_entries = queryset.count()
-        categories = DatasetType.objects.values("name").annotate(
-            count=Count("dataset")
-        )
+        categories = DatasetType.objects.values("name").annotate(count=Count("dataset"))
         metadata = queryset.aggregate(
             min_date=Min("created_at"),
             max_date=Max("created_at"),
         )
 
         # Paginate results
-        paginated_queryset = self.paginate_queryset(
-            queryset, request, view=self
-        )
+        paginated_queryset = self.paginate_queryset(queryset, request, view=self)
         serialized_data = DatasetSerializer(paginated_queryset, many=True).data
 
-        return self.get_paginated_response(
-            {
-                "total_entries": total_entries,
-                "data_categories": list(categories),
-                "metadata": metadata,
-                "datasets": serialized_data,
-            }
-        )
+        return self.get_paginated_response({
+            "total_entries": total_entries,
+            "data_categories": list(categories),
+            "metadata": metadata,
+            "datasets": serialized_data,
+        })

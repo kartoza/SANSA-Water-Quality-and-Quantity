@@ -25,12 +25,19 @@ class Analysis:
     """
     Do calculations on the STAC data.
     """
-    def __init__(
-            self, start_date, end_date, bbox, 
-            resolution=20, export_plot=True, export_nc=True, 
-            export_cog=True, calc_types=None, task=None, 
-            mask_path=None, auto_detect_water=False
-        ):
+
+    def __init__(self,
+                 start_date,
+                 end_date,
+                 bbox,
+                 resolution=20,
+                 export_plot=True,
+                 export_nc=True,
+                 export_cog=True,
+                 calc_types=None,
+                 task=None,
+                 mask_path=None,
+                 auto_detect_water=False):
         self.bbox = bbox
         self.resolution = resolution
         self.crs = "EPSG:6933"
@@ -50,9 +57,7 @@ class Analysis:
         self.mask_path = mask_path
         self.auto_detect_water = auto_detect_water
 
-        configure_rio(
-            cloud_defaults=True
-        )
+        configure_rio(cloud_defaults=True)
 
         self.mask = None
         if mask_path and os.path.exists(mask_path):
@@ -66,10 +71,12 @@ class Analysis:
 
         # Build a query with the set parameters
         query = catalog.search(
-            bbox=bbox, 
-            collections=collections, 
+            bbox=bbox,
+            collections=collections,
             datetime=f"{start_date}/{end_date}",
-            query={"eo:cloud_cover": {"lt": 20}}  # Optional cloud cover filter
+            query={"eo:cloud_cover": {
+                "lt": 20
+            }}  # Optional cloud cover filter
         )
         # Search the STAC catalog for all items matching the query
         self.items = list(query.items())
@@ -84,7 +91,7 @@ class Analysis:
     def run_export_cog(self, month_data, cog_path):
         """Export to Cloud Optimized GeoTIFF.
         """
-        self.add_log(f"Saving COG: {cog_path}") 
+        self.add_log(f"Saving COG: {cog_path}")
         month_data.rio.to_raster(
             cog_path,
             driver="COG",
@@ -100,10 +107,7 @@ class Analysis:
         """Export to NetCDF.
         """
         self.add_log(f"Saving NetCDF: {nc_path}")
-        month_data.to_netcdf(
-            nc_path,
-            engine="netcdf4"
-        )
+        month_data.to_netcdf(nc_path, engine="netcdf4")
 
     def run_export_plot(self, month_data, png_path, year, month, calc_type):
         """Export to PNG format.
@@ -115,11 +119,7 @@ class Analysis:
             data_min -= 0.1
             data_max += 0.1
 
-        ax = month_data.plot(
-            cmap="BrBG",
-            vmin=data_min,
-            vmax=data_max
-        )
+        ax = month_data.plot(cmap="BrBG", vmin=data_min, vmax=data_max)  # noqa
         plt.gca().set_title(f"{calc_type} - {year}-{month:02d}")
 
         plt.savefig(png_path, dpi=300, bbox_inches='tight')
@@ -135,11 +135,9 @@ class Analysis:
                         django_file = File(f)
                         output = self.task.task_outputs.create(
                             monitoring_type=MonitoringIndicatorType.objects.get(
-                                monitoring_indicator_type=calc_type
-                            ),
+                                monitoring_indicator_type=calc_type),
                             size=os.path.getsize(path),
-                            created_by=self.task.created_by
-                        )
+                            created_by=self.task.created_by)
                         output.file.save(os.path.basename(path), django_file)
                         os.remove(path)
                         new_paths.append(output.file.url)
@@ -151,7 +149,8 @@ class Analysis:
 
             # Ensure mask has a CRS
             if self.mask.rio.crs is None:
-                raise ValueError("Mask raster has no CRS. Please provide a valid georeferenced mask.")
+                raise ValueError(
+                    "Mask raster has no CRS. Please provide a valid georeferenced mask.")
 
             # Reproject mask if needed
             if self.mask.rio.crs != data_array.rio.crs:
@@ -164,7 +163,10 @@ class Analysis:
             mask_transform = self.mask.rio.transform()
 
             # Extract valid polygons and convert to Shapely objects
-            polygons = [shape(geom) for geom, value in shapes(mask_array, transform=mask_transform) if value > 0]
+            polygons = [
+                shape(geom) for geom, value in shapes(mask_array, transform=mask_transform)
+                if value > 0
+            ]
 
             if not polygons:
                 raise ValueError("No valid mask polygons found.")
@@ -184,10 +186,10 @@ class Analysis:
         water_mask = (awei_data >= -0.11).astype(np.uint8)
 
         # ✅ Step 2: Merge Nearby Pixels to Prevent Fragmentation
-        water_mask = binary_closing(water_mask, structure=np.ones((3,3))).astype(np.uint8)
+        water_mask = binary_closing(water_mask, structure=np.ones((3, 3))).astype(np.uint8)
 
         # ✅ Step 3: Label Connected Water Regions (Ensuring Diagonal Connectivity)
-        labeled_array, num_features = label(water_mask, structure=np.ones((3,3)))
+        labeled_array, num_features = label(water_mask, structure=np.ones((3, 3)))
 
         if num_features == 0:
             self.add_log(f"No water bodies found for {year}-{month:02d}")
@@ -198,7 +200,10 @@ class Analysis:
         # ✅ Step 4: Filter Out Small Water Bodies (Noise Removal)
         min_pixels = 100  # 🔥 Adjust based on resolution (e.g., 100 pixels ≈ 0.2 km²)
         unique_labels, counts = np.unique(labeled_array, return_counts=True)
-        large_water_bodies = {label for label, count in zip(unique_labels, counts) if count >= min_pixels}
+        large_water_bodies = {
+            label
+            for label, count in zip(unique_labels, counts) if count >= min_pixels
+        }
 
         # ✅ Step 5: Loop Over Each Large Water Body & Save Separately
         transform = awei_data.rio.transform()
@@ -213,7 +218,9 @@ class Analysis:
             masked_awei = awei_data.where(water_body == 1, np.nan)
 
             # Convert to vector polygons
-            polygons = [shape(geom) for geom, value in shapes(water_body, transform=transform) if value > 0]
+            polygons = [
+                shape(geom) for geom, value in shapes(water_body, transform=transform) if value > 0
+            ]
 
             if not polygons:
                 continue
@@ -229,17 +236,18 @@ class Analysis:
                 max_y, max_x = nonzero_coords.max(axis=0)
 
                 # Crop AWEI data to this bounding box
-                cropped_awei = masked_awei.isel(y=slice(min_y, max_y + 1), x=slice(min_x, max_x + 1))
+                cropped_awei = masked_awei.isel(y=slice(min_y, max_y + 1),
+                                                x=slice(min_x, max_x + 1))
                 # ✅ Fix: Reassign Coordinates to Match Cropped Data
                 cropped_awei = cropped_awei.assign_coords({
                     "y": masked_awei.y[min_y:max_y + 1],
                     "x": masked_awei.x[min_x:max_x + 1]
                 })
-                
+
                 # ✅ Save as GeoTIFF
                 tiff_path = f"{self.output_dir}/water_body_{year}_{month:02d}_{i}.tif"
                 cropped_awei.rio.to_raster(
-                    tiff_path, 
+                    tiff_path,
                     driver="COG",
                     compress="DEFLATE",
                     predictor=2,
@@ -285,18 +293,23 @@ class Analysis:
             self.output[calc_type] = []
 
             if calc_type == "AWEI":
-                monthly_ds[calc_type] = 1.0 * monthly_ds.blue + 2.5 * monthly_ds.green - 1.5 * (monthly_ds.nir + monthly_ds.swir16) - 0.25 * monthly_ds.swir22
+                monthly_ds[calc_type] = 1.0 * monthly_ds.blue + 2.5 * monthly_ds.green - 1.5 * (
+                    monthly_ds.nir + monthly_ds.swir16) - 0.25 * monthly_ds.swir22
             elif calc_type == "NDCI":
-                monthly_ds[calc_type] = (monthly_ds.red - monthly_ds.blue) / (monthly_ds.red + monthly_ds.blue)
+                monthly_ds[calc_type] = (monthly_ds.red - monthly_ds.blue) / (monthly_ds.red +
+                                                                              monthly_ds.blue)
             elif calc_type == "NDTI":
-                monthly_ds[calc_type] = (monthly_ds.green - monthly_ds.red) / (monthly_ds.green + monthly_ds.red)
+                monthly_ds[calc_type] = (monthly_ds.green - monthly_ds.red) / (monthly_ds.green +
+                                                                               monthly_ds.red)
             elif calc_type == "SABI":
-                monthly_ds[calc_type] = (monthly_ds.nir - monthly_ds.red) / (monthly_ds.blue + monthly_ds.green)
+                monthly_ds[calc_type] = (monthly_ds.nir - monthly_ds.red) / (monthly_ds.blue +
+                                                                             monthly_ds.green)
             elif calc_type == "CDOM":
                 monthly_ds[calc_type] = (1 / monthly_ds.blue) - (1 / monthly_ds.green)
 
             monthly_ds = monthly_ds.sortby("y")
-            monthly_ds[calc_type] = monthly_ds[calc_type].interpolate_na(dim="x", method="nearest").interpolate_na(dim="y", method="nearest")
+            monthly_ds[calc_type] = monthly_ds[calc_type].interpolate_na(
+                dim="x", method="nearest").interpolate_na(dim="y", method="nearest")
 
             for time_val in monthly_ds.time.values:
                 month_data = monthly_ds.get(calc_type).sel(time=time_val)
@@ -313,7 +326,7 @@ class Analysis:
                 if self.export_plot:
                     self.run_export_plot(month_data, png_path, year, month, calc_type)
                     self.output[calc_type].append(png_path)
-                
+
                 if self.export_nc:
                     self.run_export_nc(month_data, nc_path)
                     self.output[calc_type].append(nc_path)
@@ -326,9 +339,8 @@ class Analysis:
                         else:
                             self.run_export_cog(month_data, cog_path)
                             self.output["AWEI"].append(cog_path)
-                            cog_path = generate_water_mask_from_tif(
-                                cog_path, threshold=-0.11
-                            )['mask_path']
+                            cog_path = generate_water_mask_from_tif(cog_path,
+                                                                    threshold=-0.11)['mask_path']
                             self.output[calc_type].append(cog_path)
                     else:
                         self.run_export_cog(month_data, cog_path)

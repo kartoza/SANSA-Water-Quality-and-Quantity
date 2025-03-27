@@ -8,10 +8,8 @@ from celery import Celery
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 # Get the base REDIS URL, default to redis' default
-BASE_REDIS_URL = (
-    f'redis://default:{os.environ.get("REDIS_PASSWORD", "")}'
-    f'@{os.environ.get("REDIS_HOST", "")}',
-)
+BASE_REDIS_URL = (f'redis://default:{os.environ.get("REDIS_PASSWORD", "")}'
+                  f'@{os.environ.get("REDIS_HOST", "")}', )
 
 app = Celery('sansa-water-quality-and-quantity')
 

@@ -14,13 +14,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         start = timezone.now()
 
-        calculation = CalculateMonitoring(
-            start_date="2024-01-01",
-            end_date="2024-01-31",
-            bbox=[19.0718146707764333, -34.1046576825389707, 19.3240754498619083, -33.9548456688371942],
-            resolution=10,
-            export_nc=False
-        )
+        calculation = CalculateMonitoring(start_date="2024-01-01",
+                                          end_date="2024-01-31",
+                                          bbox=[
+                                              19.0718146707764333, -34.1046576825389707,
+                                              19.3240754498619083, -33.9548456688371942
+                                          ],
+                                          resolution=10,
+                                          export_nc=False)
         calculation.run()
 
         end = timezone.now()
@@ -28,4 +29,3 @@ class Command(BaseCommand):
         runtime.total_seconds()
 
         print(f"Total runtime: {runtime.total_seconds():.2f} seconds")
-
