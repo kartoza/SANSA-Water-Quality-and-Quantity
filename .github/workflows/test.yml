@@ -27,5 +27,7 @@ jobs:
           # Spin up and run tests
           docker compose -f docker-compose.yml -f docker-compose.test.yml up --exit-code-from django
 
+          docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm django python manage.py test
+
           # Clean up
           docker compose -f docker-compose.yml -f docker-compose.test.yml down
