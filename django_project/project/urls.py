@@ -7,7 +7,7 @@ from project.api_views import (
     AWEIWaterMaskView,
     WaterMaskStatusView,
 )
-from project.views.dataset import (
+from project.api_views.dataset import (
     DatasetOverviewView,
 )
 

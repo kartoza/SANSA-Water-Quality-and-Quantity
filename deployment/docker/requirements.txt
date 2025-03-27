@@ -42,3 +42,4 @@ matplotlib==3.10.1
 rioxarray==0.18.2
 geopandas==1.0.1
 dask<2024.1.0
+scikit-image==0.25.2

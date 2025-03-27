@@ -7,7 +7,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import geopandas as gpd
-import rasterio
 from rasterio.features import shapes
 from shapely.geometry import shape
 from scipy.ndimage import label, binary_closing
@@ -30,7 +29,7 @@ class Analysis:
             self, start_date, end_date, bbox, 
             resolution=20, export_plot=True, export_nc=True, 
             export_cog=True, calc_types=None, task=None, 
-            mask_path=None, auto_detect_water=False, input_type="landsat"
+            mask_path=None, auto_detect_water=False
         ):
         self.bbox = bbox
         self.resolution = resolution
@@ -50,7 +49,6 @@ class Analysis:
         self.output = {}
         self.mask_path = mask_path
         self.auto_detect_water = auto_detect_water
-        self.input_type = input_type
 
         configure_rio(
             cloud_defaults=True
@@ -64,10 +62,7 @@ class Analysis:
         catalog = Client.open("https://earth-search.aws.element84.com/v1")
 
         # Set the STAC collections
-        if self.input_type == "landsat":
-            collections = ["landsat-c2-l2"]
-        else:
-            collections = ["sentinel-2-c1-l2a"]
+        collections = ["sentinel-2-c1-l2a"]
 
         # Build a query with the set parameters
         query = catalog.search(
