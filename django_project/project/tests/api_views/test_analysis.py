@@ -1,17 +1,17 @@
-import os
-import uuid as uuid_lib
+# import os
+# import uuid as uuid_lib
 import numpy as np
 import xarray as xr
 import pandas as pd
 from unittest.mock import patch, MagicMock
 from django.urls import reverse
-from django.conf import settings
+# from django.conf import settings
 from django.test import override_settings
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from core.factories import UserFactory  # Assuming this is your factory import
-from project.models.monitor import AnalysisTask, MonitoringIndicatorType
-from project.utils.calculations.analysis import Analysis
+from project.models.monitor import AnalysisTask
+# from project.utils.calculations.analysis import Analysis
 
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
@@ -50,9 +50,12 @@ class WaterAnalysisAPIViewTest(APITestCase):
         mock_stac_load.return_value = dummy_data
 
         payload = {
-            "start_date": "2024-01-01",
-            "end_date": "2024-01-31",
-            "bbox": [19.0718146707764333, -34.1046576825389707, 19.3240754498619083, -33.9548456688371942],
+            "start_date":
+            "2024-01-01",
+            "end_date":
+            "2024-01-31",
+            "bbox":
+            [19.0718146707764333, -34.1046576825389707, 19.3240754498619083, -33.9548456688371942],
             "calc_types": ["AWEI", "NDCI"]
         }
 
@@ -63,7 +66,7 @@ class WaterAnalysisAPIViewTest(APITestCase):
 
     @patch("project.utils.calculations.analysis.Client")
     @patch("project.utils.calculations.analysis.stac_load")
-    def test_creates_actual_file(self, mock_stac_load, mock_client):   
+    def test_creates_actual_file(self, mock_stac_load, mock_client):
         """
         Test that the view creates expected output files.
         """
@@ -72,7 +75,7 @@ class WaterAnalysisAPIViewTest(APITestCase):
         response = self.setup_data(mock_stac_load, mock_client)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        task_id = response.data["message"]["task_uuid"]
+        # task_id = response.data["message"]["task_uuid"]
         #
         # url = reverse("analysis-task-status", kwargs={"task_uuid": task_id})
         # response = self.client.get(url)
@@ -124,10 +127,9 @@ class WaterAnalysisAPIViewTest(APITestCase):
         # for output in awei_outputs + ndci_outputs:
         #     self.assertTrue(os.path.exists(output))
 
-
     @patch("project.utils.calculations.analysis.Client")
     @patch("project.utils.calculations.analysis.stac_load")
-    def test_no_duplicate_task(self, mock_stac_load, mock_client):   
+    def test_no_duplicate_task(self, mock_stac_load, mock_client):
         """Test that AnalysisTask with same parameters will not be created twice.
         """
 

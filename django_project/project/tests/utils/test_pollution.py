@@ -4,10 +4,11 @@ from django.test import TestCase
 from django_project.core.settings.utils import absolute_path
 from project.utils.calculations.pollution import PollutionAnalyzer
 
-
 TEST_DATA_PATH = absolute_path('project', 'tests', 'data')
 
+
 class PollutionAnalyzerRealDataTest(TestCase):
+
     def setUp(self):
         self.ndti_raster = os.path.join(TEST_DATA_PATH, 'NDTI_2024_01.tif')
         self.ndci_raster = os.path.join(TEST_DATA_PATH, 'NDCI_2024_01.tif')
@@ -18,13 +19,11 @@ class PollutionAnalyzerRealDataTest(TestCase):
         os.makedirs(self.output_dir, exist_ok=True)
 
     def test_generate_reports_with_real_data(self):
-        analyzer = PollutionAnalyzer(
-            ndti_raster=self.ndti_raster,
-            ndci_raster=self.ndci_raster,
-            point_sources=self.point_sources,
-            non_point_areas=self.non_point_sources,
-            output_dir=self.output_dir
-        )
+        analyzer = PollutionAnalyzer(ndti_raster=self.ndti_raster,
+                                     ndci_raster=self.ndci_raster,
+                                     point_sources=self.point_sources,
+                                     non_point_areas=self.non_point_sources,
+                                     output_dir=self.output_dir)
 
         analyzer.generate_reports()
 

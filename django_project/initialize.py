@@ -64,11 +64,8 @@ try:
     superuser.save()
     print('superuser successfully updated')
 except get_user_model().DoesNotExist:
-    superuser = get_user_model().objects.create_superuser(
-        admin_username,
-        admin_email,
-        admin_password
-    )
+    superuser = get_user_model().objects.create_superuser(admin_username, admin_email,
+                                                          admin_password)
     print('superuser successfully created')
 
 #########################################################
@@ -82,8 +79,7 @@ print("4. Loading fixtures")
 #  INITIAL_FIXTURES=False
 import ast
 
-_load_initial_fixtures = ast.literal_eval(
-    os.getenv('INITIAL_FIXTURES', 'True'))
+_load_initial_fixtures = ast.literal_eval(os.getenv('INITIAL_FIXTURES', 'True'))
 if _load_initial_fixtures:
     call_command('load_fixtures')
 

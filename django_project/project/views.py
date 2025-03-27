@@ -34,24 +34,26 @@ class BaseTaskStatusView(APIView):
 
         if task_result.state == "SUCCESS":
             return Response(
-                {"status": "completed", "data": task_result.result},
+                {
+                    "status": "completed",
+                    "data": task_result.result
+                },
                 status=status.HTTP_200_OK,
             )
 
         elif task_result.state == "PENDING":
-            return Response(
-                {"status": "pending"}, status=status.HTTP_202_ACCEPTED
-            )
+            return Response({"status": "pending"}, status=status.HTTP_202_ACCEPTED)
 
         elif task_result.state == "FAILURE":
             return Response(
-                {"status": "failed", "message": str(task_result.result)},
+                {
+                    "status": "failed",
+                    "message": str(task_result.result)
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        return Response(
-            {"status": "unknown"}, status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({"status": "unknown"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DatasetOverviewView(APIView, PageNumberPagination):
@@ -78,28 +80,22 @@ class DatasetOverviewView(APIView, PageNumberPagination):
             queryset = queryset.filter(dataset_type__name=dataset_type)
 
         total_entries = queryset.count()
-        categories = DatasetType.objects.values("name").annotate(
-            count=Count("dataset")
-        )
+        categories = DatasetType.objects.values("name").annotate(count=Count("dataset"))
         metadata = queryset.aggregate(
             min_date=Min("created_at"),
             max_date=Max("created_at"),
         )
 
         # Paginate results
-        paginated_queryset = self.paginate_queryset(
-            queryset, request, view=self
-        )
+        paginated_queryset = self.paginate_queryset(queryset, request, view=self)
         serialized_data = DatasetSerializer(paginated_queryset, many=True).data
 
-        return self.get_paginated_response(
-            {
-                "total_entries": total_entries,
-                "data_categories": list(categories),
-                "metadata": metadata,
-                "datasets": serialized_data,
-            }
-        )
+        return self.get_paginated_response({
+            "total_entries": total_entries,
+            "data_categories": list(categories),
+            "metadata": metadata,
+            "datasets": serialized_data,
+        })
 
 
 class AWEIWaterExtentView(APIView):
@@ -119,9 +115,7 @@ class AWEIWaterExtentView(APIView):
         API Endpoint to trigger water surface area calculation.
         """
         try:
-            spatial_resolution = int(
-                request.data.get("spatial_resolution", 30)
-            )
+            spatial_resolution = int(request.data.get("spatial_resolution", 30))
             start_date = request.data.get("start_date")
             end_date = request.data.get("end_date")
             bbox = request.data.get("bbox")
@@ -134,23 +128,31 @@ class AWEIWaterExtentView(APIView):
             except ValueError:
                 bbox_message = "Invalid bounding box format."
                 return Response(
-                    {"status": "error", "message": bbox_message},
+                    {
+                        "status": "error",
+                        "message": bbox_message
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
             # Send task to Celery
-            task = compute_water_extent_task.delay(
-                bbox, spatial_resolution, start_date, end_date, input_type
-            )
+            task = compute_water_extent_task.delay(bbox, spatial_resolution, start_date, end_date,
+                                                   input_type)
 
             return Response(
-                {"status": "pending", "task_id": task.id},
+                {
+                    "status": "pending",
+                    "task_id": task.id
+                },
                 status=status.HTTP_202_ACCEPTED,
             )
 
         except ValueError as e:
             return Response(
-                {"status": "error", "message": str(e)},
+                {
+                    "status": "error",
+                    "message": str(e)
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -179,9 +181,7 @@ class AWEIWaterMaskView(APIView):
         API Endpoint to trigger water mask generation.
         """
         try:
-            spatial_resolution = int(
-                request.data.get("spatial_resolution", 30)
-            )
+            spatial_resolution = int(request.data.get("spatial_resolution", 30))
             bbox = request.data.get("bbox")
             input_type = request.data.get("input_type", "Landsat")
 
@@ -192,23 +192,30 @@ class AWEIWaterMaskView(APIView):
             except ValueError:
                 bbox_message = "Invalid bounding box format."
                 return Response(
-                    {"status": "error", "message": bbox_message},
+                    {
+                        "status": "error",
+                        "message": bbox_message
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
             # Send task to Celery
-            task = generate_water_mask_task.delay(
-                bbox, spatial_resolution, input_type
-            )
+            task = generate_water_mask_task.delay(bbox, spatial_resolution, input_type)
 
             return Response(
-                {"status": "pending", "task_id": task.id},
+                {
+                    "status": "pending",
+                    "task_id": task.id
+                },
                 status=status.HTTP_202_ACCEPTED,
             )
 
         except ValueError as e:
             return Response(
-                {"status": "error", "message": str(e)},
+                {
+                    "status": "error",
+                    "message": str(e)
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

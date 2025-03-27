@@ -11,7 +11,9 @@ class Command(BaseCommand):
         parser.add_argument("--ndci", required=True, help="Path to NDCI raster")
         parser.add_argument("--point", required=True, help="Path to point sources shapefile")
         parser.add_argument("--nonpoint", required=True, help="Path to non-point areas shapefile")
-        parser.add_argument("--output", default="pollution_reports", help="Directory to save JSON reports")
+        parser.add_argument("--output",
+                            default="pollution_reports",
+                            help="Directory to save JSON reports")
 
     def handle(self, *args, **options):
         ndti = options["ndti"]

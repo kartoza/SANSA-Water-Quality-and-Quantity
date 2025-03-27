@@ -11,9 +11,7 @@ from rest_framework.authentication import (
 from celery.result import AsyncResult
 from project.models.monitor import AnalysisTask
 from project.serializers.monitoring import AnalysisTaskStatusSerializer
-from project.tasks.water_extent import (
-    compute_water_extent_task, generate_water_mask_task
-)
+from project.tasks.water_extent import (compute_water_extent_task, generate_water_mask_task)
 
 
 class BaseTaskStatusView(APIView):
@@ -34,10 +32,8 @@ class BaseTaskStatusView(APIView):
         """
         task = get_object_or_404(AnalysisTask, uuid=task_uuid)
         result = AsyncResult(str(task.celery_task_id))
-        serializer = AnalysisTaskStatusSerializer(
-            task, context={'request': request}
-        )
-        
+        serializer = AnalysisTaskStatusSerializer(task, context={'request': request})
+
         response = serializer.data
         response['status'] = result.status
 
@@ -65,9 +61,7 @@ class AWEIWaterExtentView(APIView):
         """
         API Endpoint to trigger water surface area calculation.
         """
-        spatial_resolution = int(
-            request.data.get("spatial_resolution", 30)
-        )
+        spatial_resolution = int(request.data.get("spatial_resolution", 30))
         start_date = request.data.get("start_date")
         end_date = request.data.get("end_date")
         bbox = request.data.get("bbox")
@@ -80,7 +74,10 @@ class AWEIWaterExtentView(APIView):
         except ValueError:
             bbox_message = "Invalid bounding box format."
             return Response(
-                {"status": "error", "message": bbox_message},
+                {
+                    "status": "error",
+                    "message": bbox_message
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -94,9 +91,7 @@ class AWEIWaterExtentView(APIView):
         }
 
         # Normalize parameter ordering to avoid duplicate mismatch
-        normalized_parameters = json.loads(
-            json.dumps(parameters, sort_keys=True)
-        )
+        normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
 
         # Check if task with same parameters already exists
         try:
@@ -105,18 +100,18 @@ class AWEIWaterExtentView(APIView):
                 defaults={
                     "task_name": f"Water Extent - {request.user.username}",
                     "created_by": request.user,
-                }
-            )
+                })
         except AnalysisTask.MultipleObjectsReturned:
             task = AnalysisTask.objects.filter(
-                parameters=normalized_parameters
-            ).order_by('-created_at').first()
+                parameters=normalized_parameters).order_by('-created_at').first()
             created = False
 
         if not created:
             return Response(
                 {
-                    "message": {"task_uuid": task.uuid},
+                    "message": {
+                        "task_uuid": task.uuid
+                    },
                 },
                 status=status.HTTP_200_OK,
             )
@@ -129,7 +124,9 @@ class AWEIWaterExtentView(APIView):
             task.save()
 
             return Response(
-                {"message": {"task_uuid": task.uuid}},
+                {"message": {
+                    "task_uuid": task.uuid
+                }},
                 status=status.HTTP_200_OK,
             )
 
@@ -164,9 +161,7 @@ class AWEIWaterMaskView(APIView):
         """
         API Endpoint to trigger water mask generation.
         """
-        spatial_resolution = int(
-            request.data.get("spatial_resolution", 10)
-        )
+        spatial_resolution = int(request.data.get("spatial_resolution", 10))
         bbox = request.data.get("bbox")
         input_type = request.data.get("input_type", "Sentinel")
 
@@ -177,7 +172,10 @@ class AWEIWaterMaskView(APIView):
         except ValueError:
             bbox_message = "Invalid bounding box format."
             return Response(
-                {"status": "error", "message": bbox_message},
+                {
+                    "status": "error",
+                    "message": bbox_message
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -188,9 +186,7 @@ class AWEIWaterMaskView(APIView):
             "input_type": input_type,
         }
 
-        normalized_parameters = json.loads(
-            json.dumps(parameters, sort_keys=True)
-        )
+        normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
 
         try:
             task, created = AnalysisTask.objects.get_or_create(
@@ -198,12 +194,10 @@ class AWEIWaterMaskView(APIView):
                 defaults={
                     "task_name": f"Water Mask - {request.user.username}",
                     "created_by": request.user,
-                }
-            )
+                })
         except AnalysisTask.MultipleObjectsReturned:
             task = AnalysisTask.objects.filter(
-                parameters=normalized_parameters
-            ).order_by('-created_at').first()
+                parameters=normalized_parameters).order_by('-created_at').first()
             created = False
 
         if not created:
@@ -223,7 +217,9 @@ class AWEIWaterMaskView(APIView):
             task.save()
 
             return Response(
-                {"message": {"task_uuid": task.uuid}},
+                {"message": {
+                    "task_uuid": task.uuid
+                }},
                 status=status.HTTP_200_OK,
             )
 

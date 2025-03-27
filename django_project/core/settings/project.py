@@ -1,5 +1,4 @@
 # coding=utf-8
-
 """Project level settings.
 
 Adjust these values as needed but don't commit passwords etc. to any public
@@ -11,9 +10,7 @@ from celery.schedules import crontab
 from .contrib import *  # noqa
 
 ALLOWED_HOSTS = ['*']
-ADMINS = (
-    ('Dimas Ciputra', 'dimas@kartoza.com'),
-)
+ADMINS = (('Dimas Ciputra', 'dimas@kartoza.com'), )
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
@@ -30,15 +27,16 @@ DATABASES = {
 DEBUG = TEMPLATE_DEBUG = False
 
 # Extra installed apps
-INSTALLED_APPS = INSTALLED_APPS + (
-    'core',
-    'project'
-)
+INSTALLED_APPS = INSTALLED_APPS + ('core', 'project')
 
 # Celery Beat
 CELERY_BEAT_SCHEDULE = {
     'update_stored_data_monthly': {
         'task': 'update_stored_data',
-        'schedule': crontab(minute='0', hour='0', day_of_week='*', day_of_month='1', month_of_year='*')
+        'schedule': crontab(minute='0',
+                            hour='0',
+                            day_of_week='*',
+                            day_of_month='1',
+                            month_of_year='*')
     }
 }

@@ -6,6 +6,7 @@ class DatasetType(models.Model):
     """
     Defines the type of dataset (e.g., Satellite, In-Situ).
     """
+
     class Type(models.TextChoices):
         SATELLITE = 'satellite', _('Satellite')
         IN_SITU = 'in-situ', _('In-Situ')
@@ -29,12 +30,9 @@ class Dataset(models.Model):
     """
     name = models.TextField()
     description = models.TextField(null=True, blank=True)
-    
-    dataset_type = models.ForeignKey(
-        DatasetType,
-        on_delete=models.CASCADE
-    )
-    
+
+    dataset_type = models.ForeignKey(DatasetType, on_delete=models.CASCADE)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

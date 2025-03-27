@@ -22,9 +22,7 @@ def calculate_water_extent_from_tif(tif_path, threshold=0.0):
         }
 
 
-def generate_water_mask_from_tif(
-        awei_path, mask_output_path=None, threshold=0.0, chunk_size=1024
-):
+def generate_water_mask_from_tif(awei_path, mask_output_path=None, threshold=0.0, chunk_size=1024):
     """
     Generate binary water mask from an AWEI GeoTIFF file, optimized for large rasters.
 
@@ -51,14 +49,15 @@ def generate_water_mask_from_tif(
             for j in range(0, src.height, chunk_size):
                 for i in range(0, src.width, chunk_size):
                     # Define the window size
-                    win = Window(i, j, min(chunk_size, src.width - i), min(chunk_size, src.height - j))
-                    
+                    win = Window(i, j, min(chunk_size, src.width - i),
+                                 min(chunk_size, src.height - j))
+
                     # Read the chunk
                     awei_chunk = src.read(1, window=win)
-                    
+
                     # Apply threshold
                     water_mask_chunk = (awei_chunk > threshold).astype(np.uint8)
-                    
+
                     # Write the chunk
                     dst.write(water_mask_chunk, 1, window=win)
 

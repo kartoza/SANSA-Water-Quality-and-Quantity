@@ -1,6 +1,6 @@
 import json
 import os
- 
+
 from datetime import datetime, timedelta
 import calendar
 from celery.utils.log import get_task_logger
@@ -44,8 +44,7 @@ def update_stored_data():
 
     task = AnalysisTask.objects.filter(
         parameters=parameters,
-        status=AnalysisTask.Status.COMPLETED
-    ).order_by('-created_at').first()
+        status=AnalysisTask.Status.COMPLETED).order_by('-created_at').first()
 
     admin_username = os.getenv('ADMIN_USERNAME')
 
@@ -54,7 +53,7 @@ def update_stored_data():
     else:
         task = AnalysisTask.objects.create(
             parameters=normalized_parameters,
-            task_name=f"Water Analysis ",
+            task_name="Water Analysis",
             created_by=User.objects.get(username=admin_username),
         )
     parameters.update({"task_id": task.uuid.hex})
