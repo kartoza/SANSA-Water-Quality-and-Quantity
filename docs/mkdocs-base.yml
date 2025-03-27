@@ -55,6 +55,12 @@ nav:
                   - Data Model: developer/data-model.md
                   - Manual:
                         - Overview: developer/manual/index.md
+                        - Core: 
+                                - Core: developer/manual/core/index.md
+                                - Celery: developer/manual/core/celery.md
+                                - Context processors: developer/manual/core/context_processors.md
+                                - Factory: developer/manual/core/factories.md
+                                - URLS: developer/manual/core/urls.md
                         - Models: developer/manual/functions/models.md
                         - Functions:
                                 - Utils: developer/manual/functions/utils.md
