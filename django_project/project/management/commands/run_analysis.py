@@ -32,7 +32,8 @@ class Command(BaseCommand):
             "export_plot": False,
             "task": task,
             # "mask_path": "/home/web/media/2/e6d83fad-c5c4-46e8-9fa3-2d5daedc07b5/AWEI_2025_01_mask.tif",
-            "auto_detect_water": True
+            "auto_detect_water": True,
+            "input_type": "sentinel"
         }
         
         calculation = Analysis(**parameters)

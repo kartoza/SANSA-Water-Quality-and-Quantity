@@ -17,6 +17,7 @@ from odc.stac import configure_rio, stac_load
 from django.core.files import File
 from project.models import MonitoringIndicatorType
 from project.utils.calculations.water_extent import generate_water_mask_from_tif
+from project.utils.helper import map_band_aliases
 
 logger = get_task_logger(__name__)
 
@@ -29,7 +30,7 @@ class Analysis:
             self, start_date, end_date, bbox, 
             resolution=20, export_plot=True, export_nc=True, 
             export_cog=True, calc_types=None, task=None, 
-            mask_path=None, auto_detect_water=False
+            mask_path=None, auto_detect_water=False, input_type='sentinel'
         ):
         self.bbox = bbox
         self.resolution = resolution
@@ -49,6 +50,7 @@ class Analysis:
         self.output = {}
         self.mask_path = mask_path
         self.auto_detect_water = auto_detect_water
+        self.input_type = input_type
 
         configure_rio(
             cloud_defaults=True
@@ -62,7 +64,12 @@ class Analysis:
         catalog = Client.open("https://earth-search.aws.element84.com/v1")
 
         # Set the STAC collections
-        collections = ["sentinel-2-c1-l2a"]
+        if self.input_type == 'sentinel':
+            collections = ["sentinel-2-c1-l2a"]
+            self.bands = ("blue", "red", "green", "nir", "swir16", "swir22", "scl")
+        else:
+            collections = ["landsat-c2-l2"]
+            self.bands = ("blue", "red", "green", "nir08", "swir16", "swir22")
 
         # Build a query with the set parameters
         query = catalog.search(
@@ -259,17 +266,53 @@ class Analysis:
         """Run the calculations.
         """
         self.add_log("Loading STAC items")
+        
+        config = {
+            "sentinel-2-c1-l2a": {
+                "assets": {
+                    "*": {
+                        "data_type": "uint16",
+                        "nodata": 0,
+                        "unit": "1",
+                    },
+                    "SCL": {
+                        "data_type": "uint8",
+                        "nodata": 0,
+                        "unit": "1",
+                    },
+                },
+                "aliases": {
+                    "costal_aerosol": "B01",
+                    "blue": "B02",
+                    "green": "B03",
+                    "red": "B04",
+                    "red_edge_1": "B05",
+                    "red_edge_2": "B06",
+                    "red_edge_3": "B07",
+                    "nir": "B08",
+                    "nir_narrow": "B08A",
+                    "water_vapour": "B09",
+                    "swir_1": "B11",
+                    "swir_2": "B12",
+                    "mask": "SCL",
+                    "aerosol_optical_thickness": "AOT",
+                    "scene_average_water_vapour": "WVP",
+                },
+            }
+        }
 
         ds = stac_load(
             self.items,
-            bands=("blue", "red", "green", "nir", "swir16", "swir22", "scl"),
+            bands=self.bands,
             crs=self.crs,
             resolution=self.resolution,
             chunks={},
             groupby="solar_day",
             bbox=self.bbox,
+            band_aliases={"nir": "nir08"}
         )
-        cloud_mask = (ds.scl != 9) & (ds.scl != 10)
+        if self.input_type == 'landsat':
+            ds = ds.rename({"nir08": "nir"})
 
         self.add_log("Scale & Resample with coords preserved")
         # Step 1: Scale & Resample with coords preserved
@@ -277,7 +320,11 @@ class Analysis:
 
         self.add_log("Resample monthly")
         # Step 2: Resample monthly
-        monthly_ds = scaled_ds.where(cloud_mask).resample(time="1M").mean()
+        if self.input_type == 'sentinel':
+            cloud_mask = (ds.scl != 9) & (ds.scl != 10)
+            monthly_ds = scaled_ds.where(cloud_mask).resample(time="1M").mean()
+        else:
+            monthly_ds = scaled_ds.resample(time="1M").mean()
 
         # Step 4: Calculate measurement
         for calc_type in self.calc_types:
