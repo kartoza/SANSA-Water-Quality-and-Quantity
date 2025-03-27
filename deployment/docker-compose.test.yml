@@ -4,7 +4,7 @@ x-common-test-config: &common-test-config
   build:
     context: ../
     dockerfile: deployment/docker/Dockerfile
-    target: prod
+    target: dev
   volumes:
     - ../django_project:/home/web/django_project
     - ./volumes/static:/home/web/static
