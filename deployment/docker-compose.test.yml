@@ -1,9 +1,6 @@
 version: '3.9'
 
 x-common-test-config: &common-test-config
-  depends_on:
-    db:
-      condition: service_healthy
   build:
     context: ../
     dockerfile: deployment/docker/Dockerfile
@@ -16,6 +13,9 @@ x-common-test-config: &common-test-config
 services:
 
   worker:
+    depends_on:
+      db:
+        condition: service_healthy
     <<: *common-test-config
 
   celery_beat:
@@ -23,6 +23,9 @@ services:
 
   django:
     <<: *common-test-config
+    depends_on:
+      db:
+        condition: service_healthy
     command: >
       sh -c "
       echo 'Running Tests...';
