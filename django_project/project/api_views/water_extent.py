@@ -33,7 +33,7 @@ class BaseTaskStatusView(APIView):
         Check the status of a Celery task.
         """
         task = get_object_or_404(AnalysisTask, uuid=task_uuid)
-        result = AsyncResult(task.celery_task_id)
+        result = AsyncResult(str(task.celery_task_id))
         serializer = AnalysisTaskStatusSerializer(
             task, context={'request': request}
         )
