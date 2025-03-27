@@ -6,7 +6,7 @@ build:
 	@echo "------------------------------------------------------------------"
 	@echo "Building in production mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose build
+	@docker compose build
 
 up:
 	@echo

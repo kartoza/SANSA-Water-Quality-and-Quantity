@@ -2,11 +2,16 @@ FROM python:3.12.0-slim-bookworm AS prod
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
-    gcc gettext cron \
+    gcc g++ gettext cron \
     spatialite-bin libsqlite3-mod-spatialite \
     python3-dev python3-gdal python3-psycopg2 python3-ldap \
     python3-pip python3-pil python3-lxml python3-pylibmc \
-    uwsgi uwsgi-plugin-python3
+    uwsgi uwsgi-plugin-python3 \
+    gdal-bin libgdal-dev
+
+ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
+ENV C_INCLUDE_PATH=/usr/include/gdal
+ENV GDAL_VERSION=3.6.2
 
 # Install pip packages
 ADD deployment/docker/requirements.txt /requirements.txt

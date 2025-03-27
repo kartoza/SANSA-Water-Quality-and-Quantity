@@ -25,4 +25,12 @@ class AnalysisTaskStatusSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AnalysisTask
-        fields = ['uuid', 'task_name', 'status', 'parameters', 'started_at', 'completed_at', 'created_at', 'task_outputs']
+        fields = [
+            'uuid', 
+            'task_name', 
+            'status', 
+            'parameters', 
+            'started_at', 
+            'completed_at', 
+            'created_at', 
+            'task_outputs']

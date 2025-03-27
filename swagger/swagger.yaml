@@ -241,7 +241,7 @@ paths:
             application/json:
               example:
                 status: "pending"
-                task_id: "123456789abcdef"
+                task_uuid: "550e8400-e29b-41d4-a716-446655440000"
         "400":
           description: Bad request due to invalid parameters.
           content:
@@ -271,7 +271,7 @@ paths:
                 status: error
                 message: "An unexpected error occurred on the server."
   
-  /api/awei-water-mask/status/{task_id}/:
+  /api/awei-water-mask/{task_uuid}/:
     get:
       summary: Check Status of Water Mask Task
       description: |
@@ -282,13 +282,13 @@ paths:
       tags:
         - Water Surface Analysis
       parameters:
-        - name: task_id
+        - name: task_uuid
           in: path
           required: true
-          description: Unique task ID of the water mask generation.
+          description: Unique task UUID of the water mask generation.
           schema:
             type: string
-          example: "123456789abcdef"
+          example: "550e8400-e29b-41d4-a716-446655440000"
       responses:
         "200":
           description: Task completed successfully
@@ -372,7 +372,7 @@ paths:
             application/json:
               example:
                 status: "pending"
-                task_id: "abcdef123456"
+                task_uuid: "550e8400-e29b-41d4-a716-446655440000"
         "400":
           description: Invalid request parameters.
           content:
@@ -395,7 +395,7 @@ paths:
                 status: "error"
                 message: "An unexpected error occurred on the server."
 
-  /api/awei-water-extent/status/{task_id}/:
+  /api/awei-water-extent/{task_uuid}/:
     get:
       summary: Check Status of Water Extent Calculation
       description: |
@@ -406,13 +406,13 @@ paths:
       tags:
         - Water Surface Analysis
       parameters:
-        - name: task_id
+        - name: task_uuid
           in: path
           required: true
           description: Unique task ID of the water extent computation.
           schema:
             type: string
-          example: "abcdef123456"
+          example: "550e8400-e29b-41d4-a716-446655440000"
       responses:
         "200":
           description: Task completed successfully.
@@ -740,7 +740,7 @@ paths:
                 properties:
                   task_uuid:
                     type: string
-                    example: "abc123"
+                    example: "550e8400-e29b-41d4-a716-446655440000"
         "400":
           description: Bad request due to invalid parameters.
           content:

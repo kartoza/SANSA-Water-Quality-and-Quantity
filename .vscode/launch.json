@@ -25,5 +25,16 @@
             "django": true,
             "justMyCode": true,
         },
+        {
+          "name": "Django: Run Tests",
+          "type": "python",
+          "request": "launch",
+          "program": "${workspaceFolder}/django_project/manage.py",
+          "args": [
+            "test"
+          ],
+          "django": true,
+          "justMyCode": true
+        }
     ]
 }

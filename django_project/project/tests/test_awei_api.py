@@ -39,7 +39,7 @@ class AWEIApiTestCase(APITestCase):
 
     # **Triggering Tasks Tests**
 
-    @patch("project.tasks.compute_water_extent_task.delay")
+    @patch("project.tasks.water_extent.compute_water_extent_task.delay")
     def test_trigger_awei_water_extent_task(self, mock_task):
         """Test if the water extent task is triggered successfully."""
         mock_task.return_value.id = "mock-task-id"
@@ -52,7 +52,7 @@ class AWEIApiTestCase(APITestCase):
         self.assertIn("task_id", response.data)
         self.assertEqual(response.data["status"], "pending")
 
-    @patch("project.tasks.generate_water_mask_task.delay")
+    @patch("project.tasks.water_extent.generate_water_mask_task.delay")
     def test_trigger_awei_water_mask_task(self, mock_task):
         """Test if the water mask task is triggered successfully."""
         mock_task.return_value.id = "mock-task-id"
@@ -67,7 +67,7 @@ class AWEIApiTestCase(APITestCase):
 
     def test_awei_water_extent_invalid_bbox(self):
         """Test error response for invalid bounding box."""
-        response = self.client.get(
+        response = self.client.post(
             "/api/awei-water-extent/", self.invalid_payload
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -75,7 +75,7 @@ class AWEIApiTestCase(APITestCase):
 
     def test_awei_water_mask_invalid_bbox(self):
         """Test error response for invalid bounding box."""
-        response = self.client.get(
+        response = self.client.post(
             "/api/awei-water-mask/", self.invalid_payload
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -86,11 +86,11 @@ class AWEIApiTestCase(APITestCase):
     @patch("celery.result.AsyncResult")
     def test_check_water_extent_status_completed(self, mock_async_result):
         """Test checking the status of a completed water extent task."""
-        mock_async_result.return_value.state = "SUCCESS"
+        mock_async_result.return_value.status = "SUCCESS"
         mock_async_result.return_value.result = {"area_km2": 500}
 
         response = self.client.get(
-            "/api/awei-water-extent/status/mock-task-id/"
+            "/api/awei-water-extent/12345678-1234-5678-1234-567812345678/"
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -103,7 +103,7 @@ class AWEIApiTestCase(APITestCase):
         mock_async_result.return_value.state = "PENDING"
 
         response = self.client.get(
-            "/api/awei-water-extent/status/mock-task-id/"
+            "/api/awei-water-extent/12345678-1234-5678-1234-567812345678/"
         )
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
@@ -116,7 +116,7 @@ class AWEIApiTestCase(APITestCase):
         mock_async_result.return_value.result = "Error message"
 
         response = self.client.get(
-            "/api/awei-water-extent/status/mock-task-id/"
+            "/api/awei-water-extent/12345678-1234-5678-1234-567812345678/"
         )
 
         self.assertEqual(
@@ -135,7 +135,7 @@ class AWEIApiTestCase(APITestCase):
         }
 
         response = self.client.get(
-            "/api/awei-water-mask/status/mock-task-id/"
+            "/api/awei-water-mask/12345678-1234-5678-1234-567812345678/"
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -148,7 +148,7 @@ class AWEIApiTestCase(APITestCase):
         mock_async_result.return_value.state = "PENDING"
 
         response = self.client.get(
-            "/api/awei-water-mask/status/mock-task-id/"
+            "/api/awei-water-mask/12345678-1234-5678-1234-567812345678/"
         )
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
@@ -161,7 +161,7 @@ class AWEIApiTestCase(APITestCase):
         mock_async_result.return_value.result = "Error message"
 
         response = self.client.get(
-            "/api/awei-water-mask/status/mock-task-id/"
+            "/api/awei-water-mask/12345678-1234-5678-1234-567812345678/"
         )
 
         self.assertEqual(
