@@ -52,7 +52,6 @@ services:
       - POSTGRES_DBNAME=${DATABASE_NAME:-django}
       - POSTGRES_USER=${DATABASE_USERNAME:-docker}
       - POSTGRES_PASS=${DATABASE_PASSWORD:-docker}
-      -
 
   dbbackups:
     image: kartoza/pg-backup:14-3.3
