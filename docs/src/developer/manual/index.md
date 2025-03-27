@@ -1,4 +1,4 @@
-# Development Guide: Contributing to the `project` Django App
+# Development Guide: `project` App
 
 This guide explains how to work within the `project` Django app. It provides a quick reference for adding views, tasks, serializers, and utilities that power the Water Quantity and Quality Monitoring Platform.
 
