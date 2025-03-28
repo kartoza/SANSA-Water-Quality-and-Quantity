@@ -11,6 +11,7 @@ INSTALLED_APPS = INSTALLED_APPS + (
     'django_cleanup.apps.CleanupConfig',
     'django_celery_beat',
     'django_celery_results',
+    'leaflet'
 )
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS':

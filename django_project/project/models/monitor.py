@@ -163,3 +163,28 @@ class TaskOutput(models.Model):
     monitoring_type = models.ForeignKey(MonitoringIndicatorType, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
+
+from django.contrib.gis.db import models
+
+class Crawler(models.Model):
+    """Stores information about web crawlers.
+    """
+    class ImageType(models.TextChoices):
+        LANDSAT = 'landsat', _('landsat')
+        SENTINEL = 'sentinel', _('sentinel')
+
+    name = models.CharField(max_length=100)
+    description = models.TextField(null=True, blank=True)
+    bbox = models.PolygonField()
+    image_type = models.CharField(
+        choices=ImageType.choices,
+        default=ImageType.SENTINEL,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='updated_by', null=True, blank=True)
+
+    def __str__(self):
+        return self.name

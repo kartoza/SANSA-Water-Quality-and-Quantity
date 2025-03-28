@@ -1,7 +1,8 @@
 from django.contrib import admin
 
 from project.models.monitor import (MonitoringIndicator, MonitoringIndicatorType, MonitoringReport,
-                                    ScheduledTask, AnalysisTask, TaskOutput)
+                                    ScheduledTask, AnalysisTask, TaskOutput, Crawler)
+from django.contrib.gis.db.models import PolygonField
 
 
 @admin.register(MonitoringIndicatorType)
@@ -58,3 +59,25 @@ class TaskOutputAdmin(admin.ModelAdmin):
     search_fields = ('task__task_name', 'monitoring_type__name', 'created_by__username')
     readonly_fields = ('created_at', )
     ordering = ('-created_at', )
+
+from django.contrib.gis.forms.widgets import BaseGeometryWidget
+from django.contrib.gis import forms
+from leaflet.admin import LeafletGeoAdmin
+
+@admin.register(Crawler)
+class CrawlerAdmin(LeafletGeoAdmin):
+    list_display = ('id', 'name', 'description', 'image_type', 'created_at', 'created_by')
+    list_filter = ('image_type', 'created_at')
+    search_fields = ('name', 'description')
+    readonly_fields = ('created_at', 'created_by')
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by:  # Only set if it's a new object
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        obj.save()
+
+    
+    # formfield_overrides = {
+    #     PolygonField: {"widget": CustomMapWidget()}
+    # }

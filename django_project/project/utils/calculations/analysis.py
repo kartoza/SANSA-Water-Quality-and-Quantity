@@ -38,7 +38,7 @@ class Analysis:
                  task=None,
                  mask_path=None,
                  auto_detect_water=False,
-		 input_type='sentinel):
+                 input_type='sentinel'):
         self.bbox = bbox
         self.resolution = resolution
         self.crs = "EPSG:6933"
