@@ -6,7 +6,7 @@ from rest_framework.authentication import (
     BasicAuthentication,
     SessionAuthentication,
 )
- 
+
 from celery.result import AsyncResult
 from rest_framework import permissions
 from rest_framework.response import Response
@@ -49,7 +49,11 @@ class WaterAnalysisAPIView(APIView):
         for calc_type in calc_types:
             if calc_type not in MonitoringIndicatorType.Type.values:
                 return Response(
-                    {"error": f"{calc_type} is not one of available calculation type: ['AWEI', 'NDCI', 'NDTI', 'SABI', 'CDOM']."}, 
+                    {
+                        "error":
+                        f"{calc_type} is not one of available calculation type: "
+                        f"['AWEI', 'NDCI', 'NDTI', 'SABI', 'CDOM']."
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -68,12 +72,13 @@ class WaterAnalysisAPIView(APIView):
 
         task = AnalysisTask.objects.filter(
             parameters=parameters,
-            status=AnalysisTask.Status.COMPLETED
-        ).order_by('-created_at').first()
+            status=AnalysisTask.Status.COMPLETED).order_by('-created_at').first()
 
         if task:
             return Response(
-                {"message": {"task_uuid": task.uuid}},
+                {"message": {
+                    "task_uuid": task.uuid
+                }},
                 status=status.HTTP_200_OK,
             )
         else:
@@ -91,7 +96,9 @@ class WaterAnalysisAPIView(APIView):
             # result = run_analysis(**parameters)
 
             return Response(
-                {"message": {"task_uuid": task.uuid}},
+                {"message": {
+                    "task_uuid": task.uuid
+                }},
                 status=status.HTTP_200_OK,
             )
 
@@ -107,13 +114,12 @@ class AnalysisTaskStatusAPIView(APIView):
     """
     API View to check the status of a Celery task.
     """
-    
+
     def get(self, request, task_uuid):
         task = get_object_or_404(AnalysisTask, uuid=task_uuid)
         result = AsyncResult(task.celery_task_id)
-        serializer = AnalysisTaskStatusSerializer(
-            task, context={'request': request})
-        
+        serializer = AnalysisTaskStatusSerializer(task, context={'request': request})
+
         response = serializer.data
         response['status'] = result.status
         return Response(response, status=status.HTTP_200_OK)

@@ -58,8 +58,7 @@ STATICFILES_DIRS = (
 # Every cache key will get prefixed with this value - here we set it to
 # the name of the directory the project is in to try and use something
 # project specific.
-CACHE_MIDDLEWARE_KEY_PREFIX = os.getenv(
-    'COMPOSE_PROJECT_NAME', 'kartoza_django_project')
+CACHE_MIDDLEWARE_KEY_PREFIX = os.getenv('COMPOSE_PROJECT_NAME', 'kartoza_django_project')
 
 MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -129,17 +128,14 @@ INSTALLED_APPS = (
 )
 
 SITE_ID = 1
-STATICFILES_STORAGE = (
-    'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
-)
+STATICFILES_STORAGE = ('django.contrib.staticfiles.storage.ManifestStaticFilesStorage')
 
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': (
-            f'redis://default:{os.environ.get("REDIS_PASSWORD", "")}'
-            f'@{os.environ.get("REDIS_HOST", "")}',
-        )
+        'BACKEND':
+        'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': (f'redis://default:{os.environ.get("REDIS_PASSWORD", "")}'
+                     f'@{os.environ.get("REDIS_HOST", "")}', )
     }
 }
 

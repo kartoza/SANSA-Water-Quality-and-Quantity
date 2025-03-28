@@ -1,0 +1,33 @@
+version: '3.9'
+
+x-common-test-config: &common-test-config
+  build:
+    context: ../
+    dockerfile: deployment/docker/Dockerfile
+    target: dev
+  volumes:
+    - ../django_project:/home/web/django_project
+    - ./volumes/static:/home/web/static
+    - ./volumes/media:/home/web/media
+
+services:
+
+  worker:
+    depends_on:
+      db:
+        condition: service_healthy
+    <<: *common-test-config
+
+  celery_beat:
+    <<: *common-test-config
+
+  django:
+    <<: *common-test-config
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+      echo 'Running Tests...';
+      python manage.py test
+      "

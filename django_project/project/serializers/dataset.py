@@ -3,6 +3,7 @@ from project.models import Dataset, DatasetType
 
 
 class DatasetTypeSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = DatasetType
         fields = "__all__"

@@ -1,0 +1,16 @@
+repos:
+  - repo: https://github.com/google/yapf
+    rev: v0.40.1
+    hooks:
+      - id: yapf
+        name: yapf
+        files: ^django_project/
+        args: ["--in-place", "--recursive"]
+        verbose: true
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        additional_dependencies: []
+        files: ^django_project/

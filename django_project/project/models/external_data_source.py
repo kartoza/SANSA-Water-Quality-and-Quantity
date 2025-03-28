@@ -6,16 +6,11 @@ class ExternalDataSource(models.Model):
     Stores configurations for dynamically managed external data sources.
     """
 
-    name = models.CharField(
-        max_length=255, null=False, blank=False, unique=True
-    )
+    name = models.CharField(max_length=255, null=False, blank=False, unique=True)
     description = models.TextField(null=True, blank=True)
-    api_url = models.URLField(
-        null=False, blank=False, help_text="API Endpoint URL"
-    )
-    requires_auth = models.BooleanField(
-        default=False, help_text="If true, authentication is required"
-    )
+    api_url = models.URLField(null=False, blank=False, help_text="API Endpoint URL")
+    requires_auth = models.BooleanField(default=False,
+                                        help_text="If true, authentication is required")
     auth_token = models.CharField(
         max_length=512,
         null=True,
@@ -39,9 +34,9 @@ class ExternalDataSource(models.Model):
         default="JSON",
         help_text="Format of the response data",
     )
-    additional_params = models.JSONField(
-        null=True, blank=True, help_text="Extra parameters for API calls"
-    )
+    additional_params = models.JSONField(null=True,
+                                         blank=True,
+                                         help_text="Extra parameters for API calls")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

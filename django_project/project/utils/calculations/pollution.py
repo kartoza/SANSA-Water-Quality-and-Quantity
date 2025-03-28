@@ -8,20 +8,12 @@ from rasterio.mask import mask
 from shapely.geometry import mapping
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 class PollutionAnalyzer:
-    def __init__(
-        self,
-        ndti_raster,
-        ndci_raster,
-        point_sources,
-        non_point_areas,
-        output_dir
-    ):
+
+    def __init__(self, ndti_raster, ndci_raster, point_sources, non_point_areas, output_dir):
         """
         Initializes the Pollution Analyzer.
 
@@ -53,15 +45,13 @@ class PollutionAnalyzer:
                 geom = [mapping(source.geometry)]
                 try:
                     out_image, _ = mask(src, geom, crop=True)
-                    mean_pollution = np.mean(
-                        out_image[out_image != src.nodata]
-                    )
-                    results.append(
-                        {
-                            "id": source["id"],
-                            "mean_index": float(mean_pollution) if mean_pollution is not None else None
-                        }
-                    )
+                    mean_pollution = np.mean(out_image[out_image != src.nodata])
+                    results.append({
+                        "id":
+                        source["id"],
+                        "mean_index":
+                        float(mean_pollution) if mean_pollution is not None else None
+                    })
                 except Exception as e:
                     logging.warning(f"Skipping {source['id']}: {str(e)}")
 
@@ -75,21 +65,13 @@ class PollutionAnalyzer:
         """
         Generates JSON reports for point and non-point source pollution.
         """
-        point_report = os.path.join(
-            self.output_dir, "point_source_pollution.json"
-        )
-        non_point_report = os.path.join(
-            self.output_dir, "non_point_source_pollution.json"
-        )
+        point_report = os.path.join(self.output_dir, "point_source_pollution.json")
+        non_point_report = os.path.join(self.output_dir, "non_point_source_pollution.json")
 
         # Analyze point sources (factories, wastewater plants)
-        self.analyze_pollution(
-            self.ndti_raster, self.point_sources, point_report
-        )
+        self.analyze_pollution(self.ndti_raster, self.point_sources, point_report)
 
         # Analyze non-point sources (agriculture, runoff)
-        self.analyze_pollution(
-            self.ndci_raster, self.non_point_areas, non_point_report
-        )
+        self.analyze_pollution(self.ndci_raster, self.non_point_areas, non_point_report)
 
         logging.info("All pollution reports generated.")

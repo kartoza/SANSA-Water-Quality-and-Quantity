@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from project.models import AnalysisTask, TaskOutput
 
+
 class TaskOutputSerializer(serializers.ModelSerializer):
     file = serializers.SerializerMethodField()
     monitoring_type = serializers.SerializerMethodField()
@@ -11,7 +12,7 @@ class TaskOutputSerializer(serializers.ModelSerializer):
         if request is not None:
             return request.build_absolute_uri(obj.file.url)
         return obj.file.url
-    
+
     def get_monitoring_type(self, obj):
         return obj.monitoring_type.monitoring_indicator_type
 
@@ -26,11 +27,6 @@ class AnalysisTaskStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnalysisTask
         fields = [
-            'uuid', 
-            'task_name', 
-            'status', 
-            'parameters', 
-            'started_at', 
-            'completed_at', 
-            'created_at', 
-            'task_outputs']
+            'uuid', 'task_name', 'status', 'parameters', 'started_at', 'completed_at', 'created_at',
+            'task_outputs'
+        ]

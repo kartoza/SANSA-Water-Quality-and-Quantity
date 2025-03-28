@@ -15,17 +15,14 @@ class DatasetAPITestCase(TestCase):
         self.client = APIClient()
 
         # Create a test user
-        self.user = User.objects.create_user(
-            username="testuser", password="testpassword"
-        )
+        self.user = User.objects.create_user(username="testuser", password="testpassword")
 
         # Create authentication token
         self.token = Token.objects.create(user=self.user)
 
         # Create a test dataset type
-        self.dataset_type = DatasetType.objects.create(
-            name="Satellite", description="Satellite data"
-        )
+        self.dataset_type = DatasetType.objects.create(name="Satellite",
+                                                       description="Satellite data")
 
         # Create test datasets
         self.dataset1 = Dataset.objects.create(
@@ -46,13 +43,9 @@ class DatasetAPITestCase(TestCase):
 
     def test_api_returns_dataset_list(self):
         """Test that API returns dataset list when authenticated"""
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f"Token {self.token.key}"
-        )  # Set token
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")  # Set token
         response = self.client.get("/api/datasets/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn(
-            "total_entries", response.data["results"]
-        )  # Ensure total_entries is returned
+        self.assertIn("total_entries", response.data["results"])  # Ensure total_entries is returned
         self.assertEqual(response.data["results"]["total_entries"], 2)

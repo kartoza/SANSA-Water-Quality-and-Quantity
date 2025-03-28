@@ -19,3 +19,7 @@ black
 cffi
 # Needed for PDF back page QR Code
 qrcode
+
+pre-commit
+yapf
+flake8

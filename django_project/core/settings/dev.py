@@ -1,4 +1,3 @@
-
 from .project import *  # noqa
 
 # Set debug to True for development
@@ -23,14 +22,12 @@ LOGGING = {
     'formatters': {
         # define output formats
         'verbose': {
-            'format': (
-                '%(levelname)s %(name)s %(asctime)s %(module)s %(process)d '
-                '%(thread)d %(message)s')
+            'format': ('%(levelname)s %(name)s %(asctime)s %(module)s %(process)d '
+                       '%(thread)d %(message)s')
         },
         'simple': {
-            'format': (
-                '%(name)s %(levelname)s %(filename)s L%(lineno)s: '
-                '%(message)s')
+            'format': ('%(name)s %(levelname)s %(filename)s L%(lineno)s: '
+                       '%(message)s')
         },
     },
     'handlers': {
@@ -54,4 +51,3 @@ LOGGING = {
         'level': 'WARNING'
     }
 }
-

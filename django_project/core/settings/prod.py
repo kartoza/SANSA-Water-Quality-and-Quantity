@@ -1,5 +1,4 @@
 # coding=utf-8
-
 """Project level settings."""
 import ast
 
@@ -26,8 +25,7 @@ EMAIL_USE_SSL = ast.literal_eval(os.environ.get('EMAIL_USE_SSL', 'False'))
 EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX', '')
 
 SERVER_EMAIL = os.environ.get('ADMIN_EMAIL', 'noreply@kartoza.com')
-DEFAULT_FROM_EMAIL = os.environ.get(
-    'DEFAULT_FROM_EMAIL', 'noreply@kartoza.com')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@kartoza.com')
 
 LOGGING = {
     'version': 1,
@@ -39,7 +37,7 @@ LOGGING = {
     'formatters': {
         'verbose': {
             'format': '%(levelname)s %(asctime)s %(module)s %(process)d '
-                      '%(thread)d %(message)s'
+            '%(thread)d %(message)s'
         },
     },
     'handlers': {
@@ -78,8 +76,6 @@ if SENTRY_DSN is not None and SENTRY_DSN.strip():
 
         # If you wish to associate users to errors (assuming you are using
         # django.contrib.auth) you may enable sending PII data.
-        send_default_pii=True
-    )
-
+        send_default_pii=True)
 
 CSRF_TRUSTED_ORIGINS = ast.literal_eval(os.environ.get('CSRF_TRUSTED_ORIGINS', '[]'))

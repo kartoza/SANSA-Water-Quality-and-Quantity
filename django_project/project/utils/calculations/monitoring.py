@@ -13,10 +13,16 @@ class CalculateMonitoring:
     """
     Do calculations on the STAC data.
     """
-    def __init__(self, start_date, end_date, bbox, 
-                 resolution=20, export_plot=True, export_nc=True, 
-                 export_cog=True, calc_types=None
-                 ):
+
+    def __init__(self,
+                 start_date,
+                 end_date,
+                 bbox,
+                 resolution=20,
+                 export_plot=True,
+                 export_nc=True,
+                 export_cog=True,
+                 calc_types=None):
         self.bbox = bbox
         self.resolution = resolution
         self.crs = "EPSG:6933"
@@ -31,9 +37,7 @@ class CalculateMonitoring:
         self.output_dir = os.path.join("/tmp", self.uuid)
         os.makedirs(self.output_dir, exist_ok=True)
 
-        configure_rio(
-            cloud_defaults=True
-        )
+        configure_rio(cloud_defaults=True)
 
         # Open the stac catalogue
         catalog = Client.open("https://earth-search.aws.element84.com/v1")
@@ -43,10 +47,12 @@ class CalculateMonitoring:
 
         # Build a query with the set parameters
         query = catalog.search(
-            bbox=bbox, 
-            collections=collections, 
+            bbox=bbox,
+            collections=collections,
             datetime=f"{start_date}/{end_date}",
-            query={"eo:cloud_cover": {"lt": 20}}  # Optional cloud cover filter
+            query={"eo:cloud_cover": {
+                "lt": 20
+            }}  # Optional cloud cover filter
         )
         # Search the STAC catalog for all items matching the query
         self.items = list(query.items())
@@ -55,7 +61,7 @@ class CalculateMonitoring:
     def run_export_cog(self, month_data, cog_path):
         """Export to Cloud Optimized GeoTIFF.
         """
-        import rioxarray 
+        import rioxarray
         month_data.rio.to_raster(
             cog_path,
             driver="COG",
@@ -71,10 +77,7 @@ class CalculateMonitoring:
     def run_export_nc(self, month_data, nc_path):
         """Export to NetCDF.
         """
-        month_data.to_netcdf(
-            nc_path,
-            engine="netcdf4"
-        )
+        month_data.to_netcdf(nc_path, engine="netcdf4")
         print(f"Saved NetCDF: {nc_path}")
 
     def run_export_plot(self, month_data, png_path, year, month, calc_type):
@@ -86,11 +89,7 @@ class CalculateMonitoring:
             data_min -= 0.1
             data_max += 0.1
 
-        ax = month_data.plot(
-            cmap="BrBG",
-            vmin=data_min,
-            vmax=data_max
-        )
+        ax = month_data.plot(cmap="BrBG", vmin=data_min, vmax=data_max)  # noqa
         plt.gca().set_title(f"{calc_type} - {year}-{month:02d}")
 
         plt.savefig(png_path, dpi=300, bbox_inches='tight')
@@ -121,13 +120,17 @@ class CalculateMonitoring:
         for calc_type in self.calc_types:
             print(f"calculate {calc_type}")
             if calc_type == "AWEI":
-                monthly_ds[calc_type] = 1.0 * monthly_ds.blue + 2.5 * monthly_ds.green - 1.5 * (monthly_ds.nir + monthly_ds.swir16) - 0.25 * monthly_ds.swir22
+                monthly_ds[calc_type] = 1.0 * monthly_ds.blue + 2.5 * monthly_ds.green - 1.5 * (
+                    monthly_ds.nir + monthly_ds.swir16) - 0.25 * monthly_ds.swir22
             elif calc_type == "NDCI":
-                monthly_ds[calc_type] = (monthly_ds.red - monthly_ds.blue) / (monthly_ds.red + monthly_ds.blue)
+                monthly_ds[calc_type] = (monthly_ds.red - monthly_ds.blue) / (monthly_ds.red +
+                                                                              monthly_ds.blue)
             elif calc_type == "NDTI":
-                monthly_ds[calc_type] = (monthly_ds.green - monthly_ds.red) / (monthly_ds.green + monthly_ds.red)
+                monthly_ds[calc_type] = (monthly_ds.green - monthly_ds.red) / (monthly_ds.green +
+                                                                               monthly_ds.red)
             elif calc_type == "SABI":
-                monthly_ds[calc_type] = (monthly_ds.nir - monthly_ds.red) / (monthly_ds.blue + monthly_ds.green)
+                monthly_ds[calc_type] = (monthly_ds.nir - monthly_ds.red) / (monthly_ds.blue +
+                                                                             monthly_ds.green)
             elif calc_type == "CDOM":
                 monthly_ds[calc_type] = (1 / monthly_ds.blue) - (1 / monthly_ds.green)
 
@@ -144,7 +147,7 @@ class CalculateMonitoring:
 
                 if self.export_plot:
                     self.run_export_plot(month_data, png_path, year, month, calc_type)
-                
+
                 if self.export_nc:
                     self.run_export_nc(month_data, nc_path)
 

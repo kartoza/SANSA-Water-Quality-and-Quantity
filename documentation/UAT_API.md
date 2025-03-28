@@ -625,7 +625,7 @@ If no token is provided or if the token is invalid, the request will return a `4
 
 ### 1.6 Analysis Task Status
 
-**URL:** `/api/analysis-task/{task_uuid}`  
+**URL:** `/api/water-analysis/{task_uuid}`  
 **Content-Type:** `application/json`  
 **Method:** `GET`  
 **Description:** This endpoint returns the status of the specified analysis task.
