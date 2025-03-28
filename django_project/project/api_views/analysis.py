@@ -44,7 +44,8 @@ class WaterAnalysisAPIView(APIView):
         export_plot = data.get("export_plot", False)
         export_nc = data.get("export_nc", False)
         export_cog = data.get("export_cog", True)
-        calc_types = data.get("calc_types", MonitoringIndicatorType.Type.values)  # Can be None
+        auto_detect_water = data.get("auto_detect_water", True)
+        calc_types = data.get("calc_types", MonitoringIndicatorType.Type.values)
         for calc_type in calc_types:
             if calc_type not in MonitoringIndicatorType.Type.values:
                 return Response(
@@ -61,6 +62,7 @@ class WaterAnalysisAPIView(APIView):
             "export_nc": export_nc,
             "export_cog": export_cog,
             "calc_types": calc_types,
+            "auto_detect_water": auto_detect_water
         }
         normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
 
