@@ -20,7 +20,8 @@ def run_analysis(self,
                  export_cog=True,
                  calc_types=None,
                  task_id=None,
-		 auto_detect_water=True):
+                 auto_detect_water=True,
+                 image_type='sentinel'):
     """Run calculation."""
 
     self.update_state(state="RUNNING")
@@ -42,7 +43,8 @@ def run_analysis(self,
             export_cog=export_cog,
             calc_types=calc_types,
             task=task,
-            auto_detect_water=auto_detect_water)
+            auto_detect_water=auto_detect_water,
+            image_type=image_type)
         calculation.run()
     except Exception as e:
         task.add_log(str(e), logging.ERROR)

@@ -16,6 +16,7 @@ from pystac_client import Client
 from odc.stac import configure_rio, stac_load
 from django.core.files import File
 from project.models import MonitoringIndicatorType
+from project.models.monitor import TaskOutput
 from project.utils.calculations.water_extent import generate_water_mask_from_tif
 
 logger = get_task_logger(__name__)
@@ -38,7 +39,7 @@ class Analysis:
                  task=None,
                  mask_path=None,
                  auto_detect_water=False,
-                 input_type='sentinel'):
+                 image_type='sentinel'):
         self.bbox = bbox
         self.resolution = resolution
         self.crs = "EPSG:6933"
@@ -57,7 +58,7 @@ class Analysis:
         self.output = {}
         self.mask_path = mask_path
         self.auto_detect_water = auto_detect_water
-        self.input_type = input_type
+        self.image_type = image_type
 
         configure_rio(cloud_defaults=True)
 
@@ -69,7 +70,7 @@ class Analysis:
         catalog = Client.open("https://earth-search.aws.element84.com/v1")
 
         # Set the STAC collections
-        if self.input_type == 'sentinel':
+        if self.image_type == 'sentinel':
             collections = ["sentinel-2-c1-l2a"]
             self.bands = ("blue", "red", "green", "nir", "swir16", "swir22", "scl")
         else:
@@ -133,21 +134,19 @@ class Analysis:
         plt.close()
 
     def save_output(self):
-        if self.task:
-            for calc_type, paths in self.output.items():
-                new_paths = []
-                for path in paths:
-                    self.add_log(f"Saving output: {path}")
-                    with open(path, 'rb') as f:
-                        django_file = File(f)
-                        output = self.task.task_outputs.create(
-                            monitoring_type=MonitoringIndicatorType.objects.get(
-                                monitoring_indicator_type=calc_type),
-                            size=os.path.getsize(path),
-                            created_by=self.task.created_by)
-                        output.file.save(os.path.basename(path), django_file)
-                        os.remove(path)
-                        new_paths.append(output.file.url)
+        for calc_type, paths in self.output.items():
+            for path in paths:
+                self.add_log(f"Saving output: {path}")
+                with open(path, 'rb') as f:
+                    django_file = File(f)
+                    output = TaskOutput.objects.create(
+                        monitoring_type=MonitoringIndicatorType.objects.get(
+                            monitoring_indicator_type=calc_type),
+                        task=self.task,
+                        size=os.path.getsize(path),
+                        created_by=self.task.created_by)
+                    output.file.save(os.path.basename(path), django_file)
+                    os.remove(path)
 
     def apply_mask(self, data_array):
         """Applies the raster mask if available, ensuring proper CRS."""
@@ -285,7 +284,7 @@ class Analysis:
             bbox=self.bbox,
             band_aliases={"nir": "nir08"}
         )
-        if self.input_type == 'landsat':
+        if self.image_type == 'landsat':
             ds = ds.rename({"nir08": "nir"})
 
         self.add_log("Scale & Resample with coords preserved")
@@ -294,7 +293,7 @@ class Analysis:
 
         self.add_log("Resample monthly")
         # Step 2: Resample monthly
-        if self.input_type == 'sentinel':
+        if self.image_type == 'sentinel':
             cloud_mask = (ds.scl != 9) & (ds.scl != 10)
             monthly_ds = scaled_ds.where(cloud_mask).resample(time="1M").mean()
         else:

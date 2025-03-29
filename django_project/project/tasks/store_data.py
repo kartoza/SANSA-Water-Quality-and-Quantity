@@ -7,12 +7,43 @@ from celery.utils.log import get_task_logger
 from django.contrib.auth import get_user_model
 from core.celery import app
 
-from project.models.monitor import AnalysisTask
+from project.models.monitor import AnalysisTask, Crawler
 from project.tasks.analysis import run_analysis
 
 logger = get_task_logger(__name__)
 
 User = get_user_model()
+
+
+@app.task(name="process_crawler")
+def process_crawler(start_date, end_date, crawler):
+    bbox = crawler.bbox.extent
+    parameters = {
+        "start_date": start_date,
+        "end_date": end_date,
+        "bbox": bbox,
+        "resolution": 20,
+        "export_plot": False,
+        "export_nc": False,
+        "export_cog": True,
+        "calc_types": ["AWEI"],
+        "auto_detect_water": True,
+        "image_type": crawler.image_type,
+    }
+    month = '{:02d}'.format(start_date.month)
+    year = start_date.year
+    task = AnalysisTask.objects.get_or_create(
+        parameters=parameters,
+        status=AnalysisTask.Status.COMPLETED,
+        defaults={
+            'task_name': f"Water Body Extraction {year}-{month}",
+        }
+    )
+    parameters.update({"task_id": task.uuid.hex})
+    print(parameters)
+    return
+    run_analysis(parameters)
+
 
 
 @app.task(name="update_stored_data")
@@ -30,16 +61,11 @@ def update_stored_data():
     # End date: Last day of last month
     end_date = datetime(year, last_month, calendar.monthrange(year, last_month)[1])
 
-    parameters = {
-        "start_date": start_date,
-        "end_date": end_date,
-        "bbox": [16.344976, -34.819166, 32.83012, -22.12503],
-        "resolution": 20,
-        "export_plot": False,
-        "export_nc": False,
-        "export_cog": True,
-        "calc_types": ["AWEI"],
-    }
+    for crawler in Crawler.objects.all():
+        process_crawler(start_date, end_date, crawler)
+
+
+    return
     normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
 
     task = AnalysisTask.objects.filter(

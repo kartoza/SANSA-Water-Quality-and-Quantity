@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from django.db import models
+from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -156,16 +156,24 @@ class TaskOutput(models.Model):
     """Output of a task.
     """
 
-    task = models.ForeignKey(AnalysisTask, related_name='task_outputs', on_delete=models.CASCADE)
+    class AnalysisPeriod(models.TextChoices):
+        DAILY = 'daily', _('Daily')
+        MONTHLY = 'monthly', _('Monthly')
 
+    task = models.ForeignKey(AnalysisTask, related_name='task_outputs', on_delete=models.CASCADE)
     file = models.FileField(upload_to=output_layer_dir_path)
     size = models.BigIntegerField(default=0)
     monitoring_type = models.ForeignKey(MonitoringIndicatorType, on_delete=models.CASCADE)
+    period = models.CharField(
+        max_length=10,
+        choices=AnalysisPeriod.choices,
+        default=AnalysisPeriod.MONTHLY,
+    )
+    analysis_date = models.DateField(help_text="Date when the analysis was taken", null=True, blank=True)
+    bbox = models.PolygonField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
-
-from django.contrib.gis.db import models
 
 class Crawler(models.Model):
     """Stores information about web crawlers.
