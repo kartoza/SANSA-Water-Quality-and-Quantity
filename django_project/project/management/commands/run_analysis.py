@@ -35,7 +35,7 @@ class Command(BaseCommand):
             "bbox": berg_river_dam_bbox,
             "end_date": "2025-01-31",
             "export_nc": False,
-            "calc_types": ["AWEI"],
+            "calc_types": ["NDCI"],
             "export_cog": True,
             "resolution": 20,
             "start_date": "2025-01-01",

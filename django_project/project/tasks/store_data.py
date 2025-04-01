@@ -19,8 +19,8 @@ User = get_user_model()
 def process_crawler(start_date, end_date, crawler):
     bbox = crawler.bbox.extent
     parameters = {
-        "start_date": start_date,
-        "end_date": end_date,
+        "start_date": start_date.strftime("%Y-%m-%d"),
+        "end_date": end_date.strftime("%Y-%m-%d"),
         "bbox": bbox,
         "resolution": 20,
         "export_plot": False,
@@ -32,7 +32,7 @@ def process_crawler(start_date, end_date, crawler):
     }
     month = '{:02d}'.format(start_date.month)
     year = start_date.year
-    task = AnalysisTask.objects.get_or_create(
+    task, _ = AnalysisTask.objects.get_or_create(
         parameters=parameters,
         status=AnalysisTask.Status.COMPLETED,
         defaults={
@@ -41,8 +41,7 @@ def process_crawler(start_date, end_date, crawler):
     )
     parameters.update({"task_id": task.uuid.hex})
     print(parameters)
-    return
-    run_analysis(parameters)
+    run_analysis(**parameters)
 
 
 
@@ -63,27 +62,3 @@ def update_stored_data():
 
     for crawler in Crawler.objects.all():
         process_crawler(start_date, end_date, crawler)
-
-
-    return
-    normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
-
-    task = AnalysisTask.objects.filter(
-        parameters=parameters,
-        status=AnalysisTask.Status.COMPLETED).order_by('-created_at').first()
-
-    admin_username = os.getenv('ADMIN_USERNAME')
-
-    if task:
-        return
-    else:
-        task = AnalysisTask.objects.create(
-            parameters=normalized_parameters,
-            task_name="Water Analysis",
-            created_by=User.objects.get(username=admin_username),
-        )
-    parameters.update({"task_id": task.uuid.hex})
-
-    result = run_analysis.delay(**parameters)
-    task.celery_task_id = result.id
-    task.save()

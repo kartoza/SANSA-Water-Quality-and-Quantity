@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from project.utils.calculations.analysis import Analysis
 from project.models.monitor import MonitoringIndicatorType, AnalysisTask
-from project.tasks.analysis import run_analysis
+from project.tasks.analysis import run_analysis_task
 from project.serializers.monitoring import AnalysisTaskStatusSerializer
 
 
@@ -90,10 +90,9 @@ class WaterAnalysisAPIView(APIView):
         parameters.update({"task_id": task.uuid.hex})
 
         try:
-            result = run_analysis.delay(**parameters)
+            result = run_analysis_task.delay(**parameters)
             task.celery_task_id = result.id
             task.save()
-            # result = run_analysis(**parameters)
 
             return Response(
                 {"message": {

@@ -1,6 +1,7 @@
 import logging
 import uuid
 import os
+import re
 import rioxarray
 import xarray as xr
 import pandas as pd
@@ -10,11 +11,15 @@ import geopandas as gpd
 from rasterio.features import shapes
 from shapely.geometry import shape
 from scipy.ndimage import label, binary_closing
+from shapely.geometry import box
+from rasterio.warp import transform_bounds
 
 from celery.utils.log import get_task_logger
 from pystac_client import Client
 from odc.stac import configure_rio, stac_load
 from django.core.files import File
+from django.utils import timezone
+from django.contrib.gis.geos import Polygon
 from project.models import MonitoringIndicatorType
 from project.models.monitor import TaskOutput
 from project.utils.calculations.water_extent import generate_water_mask_from_tif
@@ -55,7 +60,6 @@ class Analysis:
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.task = task
-        self.output = {}
         self.mask_path = mask_path
         self.auto_detect_water = auto_detect_water
         self.image_type = image_type
@@ -110,12 +114,14 @@ class Analysis:
             nodata=np.nan,
             overview_resampling="nearest",
         )
+        self.add_log(f"Saved COG: {cog_path}")
 
     def run_export_nc(self, month_data, nc_path):
         """Export to NetCDF.
         """
         self.add_log(f"Saving NetCDF: {nc_path}")
         month_data.to_netcdf(nc_path, engine="netcdf4")
+        self.add_log(f"Saved NetCDF: {nc_path}")
 
     def run_export_plot(self, month_data, png_path, year, month, calc_type):
         """Export to PNG format.
@@ -133,20 +139,32 @@ class Analysis:
         plt.savefig(png_path, dpi=300, bbox_inches='tight')
         plt.close()
 
-    def save_output(self):
-        for calc_type, paths in self.output.items():
-            for path in paths:
-                self.add_log(f"Saving output: {path}")
-                with open(path, 'rb') as f:
-                    django_file = File(f)
-                    output = TaskOutput.objects.create(
-                        monitoring_type=MonitoringIndicatorType.objects.get(
-                            monitoring_indicator_type=calc_type),
-                        task=self.task,
-                        size=os.path.getsize(path),
-                        created_by=self.task.created_by)
-                    output.file.save(os.path.basename(path), django_file)
-                    os.remove(path)
+    def save_output(self, path, calc_type, bbox):
+        # Convert bbox list to Polygon if needed
+        if isinstance(bbox, list):
+            minx, miny, maxx, maxy = bbox
+            bbox = Polygon.from_bbox((minx, miny, maxx, maxy))
+
+        match = re.search(r"_(\d{4})_(\d{2})\.", os.path.basename(path))  # Extract YYYY and MM
+
+        if match:
+            year, month = match.groups()
+            observation_date = timezone.datetime(int(year), int(month), 1, tzinfo=timezone.get_current_timezone())
+
+            with open(path, 'rb') as f:
+                django_file = File(f)
+                output = TaskOutput.objects.create(
+                    monitoring_type=MonitoringIndicatorType.objects.get(
+                        monitoring_indicator_type=calc_type),
+                    task=self.task,
+                    size=os.path.getsize(path),
+                    created_by=self.task.created_by,
+                    bbox=bbox,
+                    observation_date=observation_date)
+                output.file.save(os.path.basename(path), django_file)
+                os.remove(path)
+                breakpoint()
+                self.add_log(f"Output saved: {path}")
 
     def apply_mask(self, data_array):
         """Applies the raster mask if available, ensuring proper CRS."""
@@ -233,8 +251,8 @@ class Analysis:
 
             # ✅ Save as GeoJSON
             gdf = gpd.GeoDataFrame(geometry=polygons, crs=awei_data.rio.crs)
-            geojson_path = f"{self.output_dir}/water_body_{year}_{month:02d}_{i}.geojson"
-            gdf.to_file(geojson_path, driver="GeoJSON")
+            gdf_4326 = gdf.to_crs(epsg=4326)
+            bbox = gdf_4326.total_bounds
 
             nonzero_coords = np.argwhere(water_body)
             if nonzero_coords.size > 0:
@@ -251,7 +269,7 @@ class Analysis:
                 })
 
                 # ✅ Save as GeoTIFF
-                tiff_path = f"{self.output_dir}/water_body_{year}_{month:02d}_{i}.tif"
+                tiff_path = f"{self.output_dir}/{i}_AWEI_{year}_{month:02d}.tif"
                 cropped_awei.rio.to_raster(
                     tiff_path,
                     driver="COG",
@@ -264,10 +282,29 @@ class Analysis:
                 )
 
                 self.add_log(f"Saved water body {i}/{num_features} for {year}-{month:02d}")
+                self.save_output(tiff_path, 'AWEI', bbox)
 
-                self.output["AWEI"].append(geojson_path)
-                self.output["AWEI"].append(tiff_path)
         self.add_log(f"Finished extracting water bodies for {year}-{month:02d}")
+
+    def get_bbox(self,data_array):
+        """Extracts bbox from monthly_ds and reprojects it to EPSG:4326."""
+        # Get dataset CRS
+        dataset_crs = data_array.rio.crs
+
+        if dataset_crs is None:
+            raise ValueError("monthly_ds does not have a valid CRS")
+
+        # Extract bounding box (minx, miny, maxx, maxy)
+        minx, miny, maxx, maxy = data_array.rio.bounds()
+
+        # Transform bbox to EPSG:4326 if necessary
+        if dataset_crs.to_epsg() != 4326:
+            minx, miny, maxx, maxy = transform_bounds(dataset_crs, "EPSG:4326", minx, miny, maxx, maxy)
+
+        # Convert to Django PolygonField format
+        bbox_polygon = [minx, miny, maxx, maxy]
+
+        return bbox_polygon
 
     def run(self):
         """Run the calculations.
@@ -302,7 +339,6 @@ class Analysis:
         # Step 4: Calculate measurement
         for calc_type in self.calc_types:
             self.add_log(f"calculate {calc_type}")
-            self.output[calc_type] = []
 
             if calc_type == "AWEI":
                 monthly_ds[calc_type] = 1.0 * monthly_ds.blue + 2.5 * monthly_ds.green - 1.5 * (
@@ -337,11 +373,11 @@ class Analysis:
 
                 if self.export_plot:
                     self.run_export_plot(month_data, png_path, year, month, calc_type)
-                    self.output[calc_type].append(png_path)
+                    self.save_output(png_path, calc_type, self.get_bbox(month_data))
 
                 if self.export_nc:
                     self.run_export_nc(month_data, nc_path)
-                    self.output[calc_type].append(nc_path)
+                    self.save_output(nc_path, calc_type, self.get_bbox(month_data))
 
                 if self.export_cog:
                     if calc_type == "AWEI":
@@ -350,13 +386,9 @@ class Analysis:
                             continue
                         else:
                             self.run_export_cog(month_data, cog_path)
-                            self.output["AWEI"].append(cog_path)
                             cog_path = generate_water_mask_from_tif(cog_path,
                                                                     threshold=-0.11)['mask_path']
-                            self.output[calc_type].append(cog_path)
+                            self.save_output(cog_path, calc_type, self.get_bbox(month_data))
                     else:
                         self.run_export_cog(month_data, cog_path)
-                        self.output[calc_type].append(cog_path)
-
-        self.save_output()
-        return self.output
+                        self.save_output(cog_path, calc_type, self.get_bbox(month_data))

@@ -112,7 +112,7 @@ class AnalysisTask(models.Model):
     parameters = models.JSONField(default=dict)
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     celery_task_id = models.UUIDField(null=True, blank=True)
 
@@ -169,7 +169,7 @@ class TaskOutput(models.Model):
         choices=AnalysisPeriod.choices,
         default=AnalysisPeriod.MONTHLY,
     )
-    analysis_date = models.DateField(help_text="Date when the analysis was taken", null=True, blank=True)
+    observation_date = models.DateField(help_text="Date when the observation was taken", null=True, blank=True)
     bbox = models.PolygonField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
