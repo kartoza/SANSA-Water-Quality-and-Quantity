@@ -18,6 +18,7 @@ def run_analysis(start_date,
                  export_cog=True,
                  calc_types=None,
                  task_id=None,
+                 mask_path=None,
                  auto_detect_water=True,
                  image_type='sentinel'):
     """Run calculation."""
@@ -39,6 +40,7 @@ def run_analysis(start_date,
             export_cog=export_cog,
             calc_types=calc_types,
             task=task,
+            mask_path=mask_path,
             auto_detect_water=auto_detect_water,
             image_type=image_type)
         calculation.run()
@@ -47,7 +49,6 @@ def run_analysis(start_date,
         task.failed()
     else:
         task.complete()
-    return calculation.output
 
 
 @app.task(bind=True, name='run_analysis_task')
@@ -61,6 +62,7 @@ def run_analysis_task(self,
                       export_cog=True,
                       calc_types=None,
                       task_id=None,
+                      mask_path=None,
                       auto_detect_water=True,
                       image_type='sentinel'):
     """Run calculation."""
@@ -84,6 +86,7 @@ def run_analysis_task(self,
             export_cog=export_cog,
             calc_types=calc_types,
             task=task,
+            mask_path=mask_path,
             auto_detect_water=auto_detect_water,
             image_type=image_type)
         calculation.run()
@@ -94,4 +97,3 @@ def run_analysis_task(self,
     else:
         task.complete()
         self.update_state(state="SUCCESS")
-    return calculation.output

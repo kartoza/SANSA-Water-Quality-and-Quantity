@@ -170,9 +170,9 @@ class TaskOutput(models.Model):
         default=AnalysisPeriod.MONTHLY,
     )
     observation_date = models.DateField(help_text="Date when the observation was taken", null=True, blank=True)
-    bbox = models.PolygonField(null=True, blank=True)
+    bbox = models.PolygonField(null=True, blank=True, srid=4326)
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
 
 class Crawler(models.Model):

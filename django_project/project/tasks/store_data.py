@@ -7,8 +7,10 @@ from celery.utils.log import get_task_logger
 from django.contrib.auth import get_user_model
 from core.celery import app
 
-from project.models.monitor import AnalysisTask, Crawler
+from project.models.monitor import AnalysisTask, Crawler, TaskOutput, MonitoringIndicatorType
 from project.tasks.analysis import run_analysis
+from project.utils.helper import get_admin_user
+
 
 logger = get_task_logger(__name__)
 
@@ -34,14 +36,33 @@ def process_crawler(start_date, end_date, crawler):
     year = start_date.year
     task, _ = AnalysisTask.objects.get_or_create(
         parameters=parameters,
-        status=AnalysisTask.Status.COMPLETED,
         defaults={
-            'task_name': f"Water Body Extraction {year}-{month}",
+            'task_name': f"Periodic Update {year}-{month}",
+            'created_by': get_admin_user()
         }
     )
+    if task.status == AnalysisTask.Status.COMPLETED:
+        return
     parameters.update({"task_id": task.uuid.hex})
-    print(parameters)
+    # Extract water body 
     run_analysis(**parameters)
+
+    # Once done, loop all water body belonging to this task,
+    # then calculate NDCI and NDT
+    parameters.update({
+        "calc_types": ["NDCI", "NDTI"],
+    })
+
+    outputs = TaskOutput.objects.filter(
+        task=task,
+        monitoring_type__name=MonitoringIndicatorType.Type.AWEI
+    )
+    for output in outputs:
+        parameters.update({
+            "bbox": output.bbox.extent,
+            "mask_path": output.file.path,
+        })
+        run_analysis(**parameters)
 
 
 
@@ -62,3 +83,4 @@ def update_stored_data():
 
     for crawler in Crawler.objects.all():
         process_crawler(start_date, end_date, crawler)
+    return {"message": "Task already completed."}

@@ -14,7 +14,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         start = timezone.now()
-        task = AnalysisTask.objects.get(uuid='e6d83fad-c5c4-46e8-9fa3-2d5daedc07b5')
+        task, _ = AnalysisTask.objects.get_or_create(uuid='e6d83fad-c5c4-46e8-9fa3-2d5daedc07b5')
         bbox = [  # noqa
             18.9642798271509356, -34.1575977741685364, 19.3228608906262345, -33.8841992864707748
         ]
@@ -35,13 +35,13 @@ class Command(BaseCommand):
             "bbox": berg_river_dam_bbox,
             "end_date": "2025-01-31",
             "export_nc": False,
-            "calc_types": ["NDCI"],
+            "calc_types": ["AWEI"],
             "export_cog": True,
             "resolution": 20,
             "start_date": "2025-01-01",
             "export_plot": False,
             "task": task,
-            "auto_detect_water": True
+            "auto_detect_water": False
         }
 
         calculation = Analysis(**parameters)

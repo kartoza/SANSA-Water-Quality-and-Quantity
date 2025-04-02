@@ -8,6 +8,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import geopandas as gpd
+from constance import config
+from pyproj import CRS
 from rasterio.features import shapes
 from shapely.geometry import shape
 from scipy.ndimage import label, binary_closing
@@ -114,14 +116,12 @@ class Analysis:
             nodata=np.nan,
             overview_resampling="nearest",
         )
-        self.add_log(f"Saved COG: {cog_path}")
 
     def run_export_nc(self, month_data, nc_path):
         """Export to NetCDF.
         """
         self.add_log(f"Saving NetCDF: {nc_path}")
         month_data.to_netcdf(nc_path, engine="netcdf4")
-        self.add_log(f"Saved NetCDF: {nc_path}")
 
     def run_export_plot(self, month_data, png_path, year, month, calc_type):
         """Export to PNG format.
@@ -145,8 +145,7 @@ class Analysis:
             minx, miny, maxx, maxy = bbox
             bbox = Polygon.from_bbox((minx, miny, maxx, maxy))
 
-        match = re.search(r"_(\d{4})_(\d{2})\.", os.path.basename(path))  # Extract YYYY and MM
-
+        match = re.search(r"(\d{4})_(\d{2})" , os.path.basename(path))  # Extract YYYY and MM
         if match:
             year, month = match.groups()
             observation_date = timezone.datetime(int(year), int(month), 1, tzinfo=timezone.get_current_timezone())
@@ -163,8 +162,7 @@ class Analysis:
                     observation_date=observation_date)
                 output.file.save(os.path.basename(path), django_file)
                 os.remove(path)
-                breakpoint()
-                self.add_log(f"Output saved: {path}")
+                self.add_log(f"Output saved")
 
     def apply_mask(self, data_array):
         """Applies the raster mask if available, ensuring proper CRS."""
@@ -196,10 +194,15 @@ class Analysis:
                 raise ValueError("No valid mask polygons found.")
 
             # Create GeoDataFrame correctly
+
+            # Get CRS from data_array and assign it to mask_gdf
+            data_array.rio.write_crs(6933, inplace=True)
+            correct_crs = CRS.from_epsg(6933)
             mask_gdf = gpd.GeoDataFrame(geometry=polygons, crs=self.mask.rio.crs)
+            mask_gdf = mask_gdf.to_crs(correct_crs)
 
             # Clip data using Shapely geometries
-            data_array = data_array.rio.clip(mask_gdf.geometry, all_touched=True)
+            data_array = data_array.rio.clip(mask_gdf.geometry, all_touched=True, drop=True)
 
         return data_array
 
@@ -207,7 +210,7 @@ class Analysis:
         """Extracts and saves multiple large water bodies from AWEI."""
         self.add_log(f"Extracting water bodies for {year}-{month:02d}")
         # ✅ Step 1: Apply Water Threshold (AWEI ≥ 0)
-        water_mask = (awei_data >= -0.11).astype(np.uint8)
+        water_mask = (awei_data >= config.AWEI_THRESHOLD).astype(np.uint8)
 
         # ✅ Step 2: Merge Nearby Pixels to Prevent Fragmentation
         water_mask = binary_closing(water_mask, structure=np.ones((3, 3))).astype(np.uint8)
@@ -222,7 +225,7 @@ class Analysis:
         self.add_log(f"Found {num_features} water bodies in {year}-{month:02d}")
 
         # ✅ Step 4: Filter Out Small Water Bodies (Noise Removal)
-        min_pixels = 100  # 🔥 Adjust based on resolution (e.g., 100 pixels ≈ 0.2 km²)
+        min_pixels = config.WATER_BODY_MIN_PIXEL  # 🔥 Adjust based on resolution (e.g., 100 pixels ≈ 0.2 km²)
         unique_labels, counts = np.unique(labeled_array, return_counts=True)
         large_water_bodies = {
             label
@@ -240,20 +243,6 @@ class Analysis:
             # Extract the current water body
             water_body = (labeled_array == i).astype(np.uint8)
             masked_awei = awei_data.where(water_body == 1, np.nan)
-
-            # Convert to vector polygons
-            polygons = [
-                shape(geom) for geom, value in shapes(water_body, transform=transform) if value > 0
-            ]
-
-            if not polygons:
-                continue
-
-            # ✅ Save as GeoJSON
-            gdf = gpd.GeoDataFrame(geometry=polygons, crs=awei_data.rio.crs)
-            gdf_4326 = gdf.to_crs(epsg=4326)
-            bbox = gdf_4326.total_bounds
-
             nonzero_coords = np.argwhere(water_body)
             if nonzero_coords.size > 0:
                 min_y, min_x = nonzero_coords.min(axis=0)
@@ -281,8 +270,8 @@ class Analysis:
                     overview_resampling="nearest",
                 )
 
+                self.save_output(tiff_path, 'AWEI', self.get_bbox(cropped_awei))
                 self.add_log(f"Saved water body {i}/{num_features} for {year}-{month:02d}")
-                self.save_output(tiff_path, 'AWEI', bbox)
 
         self.add_log(f"Finished extracting water bodies for {year}-{month:02d}")
 
@@ -387,7 +376,7 @@ class Analysis:
                         else:
                             self.run_export_cog(month_data, cog_path)
                             cog_path = generate_water_mask_from_tif(cog_path,
-                                                                    threshold=-0.11)['mask_path']
+                                                                    threshold=config.AWEI_TRESHOLD)['mask_path']
                             self.save_output(cog_path, calc_type, self.get_bbox(month_data))
                     else:
                         self.run_export_cog(month_data, cog_path)
