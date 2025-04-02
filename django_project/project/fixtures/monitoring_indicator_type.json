@@ -43,5 +43,14 @@
             "description": "Colored Dissolved Organic Matter",
             "monitoring_indicator_type": "CDOM"
         }
+    },
+    {
+        "model": "project.monitoringindicatortype",
+        "pk": 6,
+        "fields": {
+            "name": "AWEI_mask",
+            "description": "Automated Water Extraction Index",
+            "monitoring_indicator_type": "AWEI_mask"
+        }
     }
 ]

@@ -12,8 +12,8 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework import status
 from project.utils.calculations.analysis import Analysis
-from project.models.monitor import MonitoringIndicatorType, AnalysisTask
-from project.tasks.analysis import run_analysis
+from project.models.monitor import MonitoringIndicatorType, AnalysisTask, TaskOutput
+from project.tasks.analysis import run_analysis_task, run_analysis
 from project.serializers.monitoring import AnalysisTaskStatusSerializer
 
 
@@ -44,7 +44,12 @@ class WaterAnalysisAPIView(APIView):
         export_plot = data.get("export_plot", False)
         export_nc = data.get("export_nc", False)
         export_cog = data.get("export_cog", True)
-        calc_types = data.get("calc_types", MonitoringIndicatorType.Type.values)  # Can be None
+        auto_detect_water = data.get("auto_detect_water", True)
+        output_mask_id = data.get("output_mask_id")
+        mask_path = None
+        if output_mask_id:
+            mask_path = get_object_or_404(TaskOutput, id=output_mask_id).file.path
+        calc_types = data.get("calc_types", MonitoringIndicatorType.Type.values)
         for calc_type in calc_types:
             if calc_type not in MonitoringIndicatorType.Type.values:
                 return Response(
@@ -65,6 +70,8 @@ class WaterAnalysisAPIView(APIView):
             "export_nc": export_nc,
             "export_cog": export_cog,
             "calc_types": calc_types,
+            "auto_detect_water": auto_detect_water,
+            "mask_path": mask_path
         }
         normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
 
@@ -88,10 +95,10 @@ class WaterAnalysisAPIView(APIView):
         parameters.update({"task_id": task.uuid.hex})
 
         try:
-            result = run_analysis.delay(**parameters)
+            result = run_analysis_task.delay(**parameters)
             task.celery_task_id = result.id
             task.save()
-            # result = run_analysis(**parameters)
+            # run_analysis(**parameters)
 
             return Response(
                 {"message": {

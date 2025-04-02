@@ -11,6 +11,9 @@ INSTALLED_APPS = INSTALLED_APPS + (
     'django_cleanup.apps.CleanupConfig',
     'django_celery_beat',
     'django_celery_results',
+    'leaflet',
+    'constance',
+    'constance.backends.database',
 )
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS':
@@ -36,3 +39,10 @@ TEMPLATES[0]['OPTIONS']['context_processors'] += [
 ]
 
 SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
+
+CONSTANCE_CONFIG = {
+    'AWEI_THRESHOLD': (-0.11, 'AWEI threshold value for detecting water body', float),
+    'WATER_BODY_MIN_PIXEL': (100, 'Minimum pixels to consider as water body', int),
+}

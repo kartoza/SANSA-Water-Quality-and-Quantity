@@ -1,21 +1,29 @@
 import logging
 import uuid
 import os
+import re
 import rioxarray
 import xarray as xr
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import geopandas as gpd
+from constance import config
+from pyproj import CRS
 from rasterio.features import shapes
 from shapely.geometry import shape
 from scipy.ndimage import label, binary_closing
+from shapely.geometry import box
+from rasterio.warp import transform_bounds
 
 from celery.utils.log import get_task_logger
 from pystac_client import Client
 from odc.stac import configure_rio, stac_load
 from django.core.files import File
+from django.utils import timezone
+from django.contrib.gis.geos import Polygon
 from project.models import MonitoringIndicatorType
+from project.models.monitor import TaskOutput
 from project.utils.calculations.water_extent import generate_water_mask_from_tif
 
 logger = get_task_logger(__name__)
@@ -37,7 +45,8 @@ class Analysis:
                  calc_types=None,
                  task=None,
                  mask_path=None,
-                 auto_detect_water=False):
+                 auto_detect_water=False,
+                 image_type='sentinel'):
         self.bbox = bbox
         self.resolution = resolution
         self.crs = "EPSG:6933"
@@ -53,9 +62,9 @@ class Analysis:
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.task = task
-        self.output = {}
         self.mask_path = mask_path
         self.auto_detect_water = auto_detect_water
+        self.image_type = image_type
 
         configure_rio(cloud_defaults=True)
 
@@ -67,7 +76,12 @@ class Analysis:
         catalog = Client.open("https://earth-search.aws.element84.com/v1")
 
         # Set the STAC collections
-        collections = ["sentinel-2-c1-l2a"]
+        if self.image_type == 'sentinel':
+            collections = ["sentinel-2-c1-l2a"]
+            self.bands = ("blue", "red", "green", "nir", "swir16", "swir22", "scl")
+        else:
+            collections = ["landsat-c2-l2"]
+            self.bands = ("blue", "red", "green", "nir08", "swir16", "swir22")
 
         # Build a query with the set parameters
         query = catalog.search(
@@ -125,22 +139,35 @@ class Analysis:
         plt.savefig(png_path, dpi=300, bbox_inches='tight')
         plt.close()
 
-    def save_output(self):
-        if self.task:
-            for calc_type, paths in self.output.items():
-                new_paths = []
-                for path in paths:
-                    self.add_log(f"Saving output: {path}")
-                    with open(path, 'rb') as f:
-                        django_file = File(f)
-                        output = self.task.task_outputs.create(
-                            monitoring_type=MonitoringIndicatorType.objects.get(
-                                monitoring_indicator_type=calc_type),
-                            size=os.path.getsize(path),
-                            created_by=self.task.created_by)
-                        output.file.save(os.path.basename(path), django_file)
-                        os.remove(path)
-                        new_paths.append(output.file.url)
+    def save_output(self, path, calc_type, bbox):
+        # Convert bbox list to Polygon if needed
+        if isinstance(bbox, list):
+            minx, miny, maxx, maxy = bbox
+            bbox = Polygon.from_bbox((minx, miny, maxx, maxy))
+
+        match = re.search(r"(\d{4})_(\d{2})" , os.path.basename(path))  # Extract YYYY and MM
+        if match:
+            year, month = match.groups()
+            observation_date = timezone.datetime(
+                int(year),
+                int(month),
+                1,
+                tzinfo=timezone.get_current_timezone()
+            )
+
+            with open(path, 'rb') as f:
+                django_file = File(f)
+                output = TaskOutput.objects.create(
+                    monitoring_type=MonitoringIndicatorType.objects.get(
+                        monitoring_indicator_type=calc_type),
+                    task=self.task,
+                    size=os.path.getsize(path),
+                    created_by=self.task.created_by,
+                    bbox=bbox,
+                    observation_date=observation_date)
+                output.file.save(os.path.basename(path), django_file)
+                os.remove(path)
+                self.add_log("Output saved")
 
     def apply_mask(self, data_array):
         """Applies the raster mask if available, ensuring proper CRS."""
@@ -172,23 +199,28 @@ class Analysis:
                 raise ValueError("No valid mask polygons found.")
 
             # Create GeoDataFrame correctly
+
+            # Get CRS from data_array and assign it to mask_gdf
+            data_array.rio.write_crs(6933, inplace=True)
+            correct_crs = CRS.from_epsg(6933)
             mask_gdf = gpd.GeoDataFrame(geometry=polygons, crs=self.mask.rio.crs)
+            mask_gdf = mask_gdf.to_crs(correct_crs)
 
             # Clip data using Shapely geometries
-            data_array = data_array.rio.clip(mask_gdf.geometry, all_touched=True)
+            data_array = data_array.rio.clip(mask_gdf.geometry, all_touched=True, drop=True)
 
         return data_array
 
     def extract_water_bodies(self, awei_data, year, month):
         """Extracts and saves multiple large water bodies from AWEI."""
         self.add_log(f"Extracting water bodies for {year}-{month:02d}")
-        # ✅ Step 1: Apply Water Threshold (AWEI ≥ 0)
-        water_mask = (awei_data >= -0.11).astype(np.uint8)
+        # Step 1: Apply Water Threshold (AWEI ≥ 0)
+        water_mask = (awei_data >= config.AWEI_THRESHOLD).astype(np.uint8)
 
-        # ✅ Step 2: Merge Nearby Pixels to Prevent Fragmentation
+        # Step 2: Merge Nearby Pixels to Prevent Fragmentation
         water_mask = binary_closing(water_mask, structure=np.ones((3, 3))).astype(np.uint8)
 
-        # ✅ Step 3: Label Connected Water Regions (Ensuring Diagonal Connectivity)
+        # Step 3: Label Connected Water Regions (Ensuring Diagonal Connectivity)
         labeled_array, num_features = label(water_mask, structure=np.ones((3, 3)))
 
         if num_features == 0:
@@ -197,16 +229,16 @@ class Analysis:
 
         self.add_log(f"Found {num_features} water bodies in {year}-{month:02d}")
 
-        # ✅ Step 4: Filter Out Small Water Bodies (Noise Removal)
-        min_pixels = 100  # 🔥 Adjust based on resolution (e.g., 100 pixels ≈ 0.2 km²)
+        # Step 4: Filter Out Small Water Bodies (Noise Removal)
+        # Adjust based on resolution (e.g., 100 pixels ≈ 0.2 km²)
+        min_pixels = config.WATER_BODY_MIN_PIXEL
         unique_labels, counts = np.unique(labeled_array, return_counts=True)
         large_water_bodies = {
             label
             for label, count in zip(unique_labels, counts) if count >= min_pixels
         }
 
-        # ✅ Step 5: Loop Over Each Large Water Body & Save Separately
-        transform = awei_data.rio.transform()
+        # Step 5: Loop Over Each Large Water Body & Save Separately
         for i in large_water_bodies:
             if i == 0:  # Ignore background
                 continue
@@ -216,20 +248,6 @@ class Analysis:
             # Extract the current water body
             water_body = (labeled_array == i).astype(np.uint8)
             masked_awei = awei_data.where(water_body == 1, np.nan)
-
-            # Convert to vector polygons
-            polygons = [
-                shape(geom) for geom, value in shapes(water_body, transform=transform) if value > 0
-            ]
-
-            if not polygons:
-                continue
-
-            # ✅ Save as GeoJSON
-            gdf = gpd.GeoDataFrame(geometry=polygons, crs=awei_data.rio.crs)
-            geojson_path = f"{self.output_dir}/water_body_{year}_{month:02d}_{i}.geojson"
-            gdf.to_file(geojson_path, driver="GeoJSON")
-
             nonzero_coords = np.argwhere(water_body)
             if nonzero_coords.size > 0:
                 min_y, min_x = nonzero_coords.min(axis=0)
@@ -238,14 +256,14 @@ class Analysis:
                 # Crop AWEI data to this bounding box
                 cropped_awei = masked_awei.isel(y=slice(min_y, max_y + 1),
                                                 x=slice(min_x, max_x + 1))
-                # ✅ Fix: Reassign Coordinates to Match Cropped Data
+                # Fix: Reassign Coordinates to Match Cropped Data
                 cropped_awei = cropped_awei.assign_coords({
                     "y": masked_awei.y[min_y:max_y + 1],
                     "x": masked_awei.x[min_x:max_x + 1]
                 })
 
-                # ✅ Save as GeoTIFF
-                tiff_path = f"{self.output_dir}/water_body_{year}_{month:02d}_{i}.tif"
+                # Save as GeoTIFF
+                tiff_path = f"{self.output_dir}/{i}_AWEI_{year}_{month:02d}.tif"
                 cropped_awei.rio.to_raster(
                     tiff_path,
                     driver="COG",
@@ -257,11 +275,32 @@ class Analysis:
                     overview_resampling="nearest",
                 )
 
+                self.save_output(tiff_path, 'AWEI', self.get_bbox(cropped_awei))
                 self.add_log(f"Saved water body {i}/{num_features} for {year}-{month:02d}")
 
-                self.output["AWEI"].append(geojson_path)
-                self.output["AWEI"].append(tiff_path)
         self.add_log(f"Finished extracting water bodies for {year}-{month:02d}")
+
+    def get_bbox(self, data_array):
+        """Extracts bbox from monthly_ds and reprojects it to EPSG:4326."""
+        # Get dataset CRS
+        dataset_crs = data_array.rio.crs
+
+        if dataset_crs is None:
+            raise ValueError("monthly_ds does not have a valid CRS")
+
+        # Extract bounding box (minx, miny, maxx, maxy)
+        minx, miny, maxx, maxy = data_array.rio.bounds()
+
+        # Transform bbox to EPSG:4326 if necessary
+        if dataset_crs.to_epsg() != 4326:
+            minx, miny, maxx, maxy = transform_bounds(
+                dataset_crs, "EPSG:4326", minx, miny, maxx, maxy
+            )
+
+        # Convert to Django PolygonField format
+        bbox_polygon = [minx, miny, maxx, maxy]
+
+        return bbox_polygon
 
     def run(self):
         """Run the calculations.
@@ -270,14 +309,22 @@ class Analysis:
 
         ds = stac_load(
             self.items,
-            bands=("blue", "red", "green", "nir", "swir16", "swir22", "scl"),
+            bands=self.bands,
             crs=self.crs,
             resolution=self.resolution,
             chunks={},
             groupby="solar_day",
             bbox=self.bbox,
+            band_aliases={"nir": "nir08"}
         )
-        cloud_mask = (ds.scl != 9) & (ds.scl != 10)
+        ds_computed = ds.compute()
+
+        # Save to pickle
+        with open("/home/web/media/dataset.pkl", "wb") as f:
+            import pickle
+            pickle.dump(ds_computed, f)
+        if self.image_type == 'landsat':
+            ds = ds.rename({"nir08": "nir"})
 
         self.add_log("Scale & Resample with coords preserved")
         # Step 1: Scale & Resample with coords preserved
@@ -285,12 +332,15 @@ class Analysis:
 
         self.add_log("Resample monthly")
         # Step 2: Resample monthly
-        monthly_ds = scaled_ds.where(cloud_mask).resample(time="1M").mean()
+        if self.image_type == 'sentinel':
+            cloud_mask = (ds.scl != 9) & (ds.scl != 10)
+            monthly_ds = scaled_ds.where(cloud_mask).resample(time="1M").mean()
+        else:
+            monthly_ds = scaled_ds.resample(time="1M").mean()
 
         # Step 4: Calculate measurement
         for calc_type in self.calc_types:
             self.add_log(f"calculate {calc_type}")
-            self.output[calc_type] = []
 
             if calc_type == "AWEI":
                 monthly_ds[calc_type] = 1.0 * monthly_ds.blue + 2.5 * monthly_ds.green - 1.5 * (
@@ -325,11 +375,11 @@ class Analysis:
 
                 if self.export_plot:
                     self.run_export_plot(month_data, png_path, year, month, calc_type)
-                    self.output[calc_type].append(png_path)
+                    self.save_output(png_path, calc_type, self.get_bbox(month_data))
 
                 if self.export_nc:
                     self.run_export_nc(month_data, nc_path)
-                    self.output[calc_type].append(nc_path)
+                    self.save_output(nc_path, calc_type, self.get_bbox(month_data))
 
                 if self.export_cog:
                     if calc_type == "AWEI":
@@ -338,13 +388,11 @@ class Analysis:
                             continue
                         else:
                             self.run_export_cog(month_data, cog_path)
-                            self.output["AWEI"].append(cog_path)
-                            cog_path = generate_water_mask_from_tif(cog_path,
-                                                                    threshold=-0.11)['mask_path']
-                            self.output[calc_type].append(cog_path)
+                            cog_path = generate_water_mask_from_tif(
+                                cog_path,
+                                threshold=config.AWEI_TRESHOLD
+                            )['mask_path']
+                            self.save_output(cog_path, calc_type, self.get_bbox(month_data))
                     else:
                         self.run_export_cog(month_data, cog_path)
-                        self.output[calc_type].append(cog_path)
-
-        self.save_output()
-        return self.output
+                        self.save_output(cog_path, calc_type, self.get_bbox(month_data))

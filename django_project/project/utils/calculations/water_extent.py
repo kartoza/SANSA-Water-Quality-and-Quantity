@@ -1,6 +1,7 @@
 import rasterio
 import numpy as np
 import os
+from constance import config
 from rasterio.windows import Window
 
 
@@ -22,7 +23,7 @@ def calculate_water_extent_from_tif(tif_path, threshold=0.0):
         }
 
 
-def generate_water_mask_from_tif(awei_path, mask_output_path=None, threshold=0.0, chunk_size=1024):
+def generate_water_mask_from_tif(awei_path, mask_output_path=None, threshold=None, chunk_size=1024):
     """
     Generate binary water mask from an AWEI GeoTIFF file, optimized for large rasters.
 
@@ -35,6 +36,9 @@ def generate_water_mask_from_tif(awei_path, mask_output_path=None, threshold=0.0
     Returns:
         dict: Dictionary with mask path and metadata.
     """
+    if threshold is None:
+        threshold = config.AWEI_TRESHOLD
+
     if not os.path.exists(awei_path):
         raise FileNotFoundError(f"AWEI file not found: {awei_path}")
 

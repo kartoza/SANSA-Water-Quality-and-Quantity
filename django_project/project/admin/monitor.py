@@ -1,7 +1,8 @@
+from leaflet.admin import LeafletGeoAdmin
 from django.contrib import admin
 
 from project.models.monitor import (MonitoringIndicator, MonitoringIndicatorType, MonitoringReport,
-                                    ScheduledTask, AnalysisTask, TaskOutput)
+                                    ScheduledTask, AnalysisTask, TaskOutput, Crawler)
 
 
 @admin.register(MonitoringIndicatorType)
@@ -52,9 +53,23 @@ class AnalysisTaskAdmin(admin.ModelAdmin):
 
 
 @admin.register(TaskOutput)
-class TaskOutputAdmin(admin.ModelAdmin):
+class TaskOutputAdmin(LeafletGeoAdmin):
     list_display = ('task', 'monitoring_type', 'file', 'created_by', 'created_at')
     list_filter = ('monitoring_type', 'created_by')
     search_fields = ('task__task_name', 'monitoring_type__name', 'created_by__username')
     readonly_fields = ('created_at', )
     ordering = ('-created_at', )
+
+
+@admin.register(Crawler)
+class CrawlerAdmin(LeafletGeoAdmin):
+    list_display = ('id', 'name', 'description', 'image_type', 'created_at', 'created_by')
+    list_filter = ('image_type', 'created_at')
+    search_fields = ('name', 'description')
+    readonly_fields = ('updated_by', 'created_by')
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by:  # Only set if it's a new object
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        obj.save()

@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from django.db import models
+from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -112,7 +112,7 @@ class AnalysisTask(models.Model):
     parameters = models.JSONField(default=dict)
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     celery_task_id = models.UUIDField(null=True, blank=True)
 
@@ -156,10 +156,53 @@ class TaskOutput(models.Model):
     """Output of a task.
     """
 
-    task = models.ForeignKey(AnalysisTask, related_name='task_outputs', on_delete=models.CASCADE)
+    class AnalysisPeriod(models.TextChoices):
+        DAILY = 'daily', _('Daily')
+        MONTHLY = 'monthly', _('Monthly')
 
+    task = models.ForeignKey(AnalysisTask, related_name='task_outputs', on_delete=models.CASCADE)
     file = models.FileField(upload_to=output_layer_dir_path)
     size = models.BigIntegerField(default=0)
     monitoring_type = models.ForeignKey(MonitoringIndicatorType, on_delete=models.CASCADE)
+    period = models.CharField(
+        max_length=10,
+        choices=AnalysisPeriod.choices,
+        default=AnalysisPeriod.MONTHLY,
+    )
+    observation_date = models.DateField(
+        help_text="Date when the observation was taken",
+        null=True,
+        blank=True
+    )
+    bbox = models.PolygonField(null=True, blank=True, srid=4326)
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+
+
+class Crawler(models.Model):
+    """Stores information about web crawlers.
+    """
+    class ImageType(models.TextChoices):
+        LANDSAT = 'landsat', _('landsat')
+        SENTINEL = 'sentinel', _('sentinel')
+
+    name = models.CharField(max_length=100)
+    description = models.TextField(null=True, blank=True)
+    bbox = models.PolygonField()
+    image_type = models.CharField(
+        choices=ImageType.choices,
+        default=ImageType.SENTINEL,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='updated_by',
+        null=True,
+        blank=True
+    )
+
+    def __str__(self):
+        return self.name
