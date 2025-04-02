@@ -1,11 +1,12 @@
 import json
 import os
-
-from datetime import datetime, timedelta
 import calendar
+
+from datetime import date, timedelta
 from celery.utils.log import get_task_logger
 from django.contrib.auth import get_user_model
 from core.celery import app
+from django.utils import timezone
 
 from project.models.monitor import AnalysisTask, Crawler, TaskOutput, MonitoringIndicatorType
 from project.tasks.analysis import run_analysis
@@ -37,7 +38,7 @@ def process_crawler(start_date, end_date, crawler):
     task, _ = AnalysisTask.objects.get_or_create(
         parameters=parameters,
         defaults={
-            'task_name': f"Periodic Update {year}-{month}",
+            'task_name': f"Periodic Update {crawler.name} {year}-{month}",
             'created_by': get_admin_user()
         }
     )
@@ -68,17 +69,17 @@ def process_crawler(start_date, end_date, crawler):
 @app.task(name="update_stored_data")
 def update_stored_data():
     # Get the current date
-    today = datetime.today()
+    today = timezone.now().today()
 
     # Determine last month's year and month
     last_month = today.month - 1 if today.month > 1 else 12
     year = today.year if today.month > 1 else today.year - 1
 
     # Start date: 1st of last month
-    start_date = datetime(year, last_month, 1)
+    start_date = date(year, last_month, 1)
 
     # End date: Last day of last month
-    end_date = datetime(year, last_month, calendar.monthrange(year, last_month)[1])
+    end_date = date(year, last_month, calendar.monthrange(year, last_month)[1])
 
     for crawler in Crawler.objects.all():
         process_crawler(start_date, end_date, crawler)

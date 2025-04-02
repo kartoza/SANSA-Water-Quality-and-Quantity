@@ -317,6 +317,12 @@ class Analysis:
             bbox=self.bbox,
             band_aliases={"nir": "nir08"}
         )
+        ds_computed = ds.compute()
+
+        # Save to pickle
+        with open("/home/web/media/dataset.pkl", "wb") as f:
+            import pickle
+            pickle.dump(ds_computed, f)
         if self.image_type == 'landsat':
             ds = ds.rename({"nir08": "nir"})
 
