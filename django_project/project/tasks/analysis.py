@@ -22,7 +22,7 @@ def run_analysis(start_date,
                  auto_detect_water=True,
                  image_type='sentinel'):
     """Run calculation."""
-    
+
     try:
         task = AnalysisTask.objects.get(uuid=task_id)
     except AnalysisTask.DoesNotExist:
@@ -31,7 +31,8 @@ def run_analysis(start_date,
 
     task.start()
     try:
-        calculation = Analysis(start_date=start_date,
+        calculation = Analysis(
+            start_date=start_date,
             end_date=end_date,
             bbox=bbox,
             resolution=resolution,
@@ -42,7 +43,8 @@ def run_analysis(start_date,
             task=task,
             mask_path=mask_path,
             auto_detect_water=auto_detect_water,
-            image_type=image_type)
+            image_type=image_type
+        )
         calculation.run()
     except Exception as e:
         task.add_log(str(e), logging.ERROR)
@@ -68,7 +70,7 @@ def run_analysis_task(self,
     """Run calculation."""
 
     self.update_state(state="RUNNING")
-    
+
     try:
         task = AnalysisTask.objects.get(uuid=task_id)
     except AnalysisTask.DoesNotExist:
@@ -77,7 +79,8 @@ def run_analysis_task(self,
 
     task.start()
     try:
-        calculation = Analysis(start_date=start_date,
+        calculation = Analysis(
+            start_date=start_date,
             end_date=end_date,
             bbox=bbox,
             resolution=resolution,
@@ -88,7 +91,8 @@ def run_analysis_task(self,
             task=task,
             mask_path=mask_path,
             auto_detect_water=auto_detect_water,
-            image_type=image_type)
+            image_type=image_type
+        )
         calculation.run()
     except Exception as e:
         task.add_log(str(e), logging.ERROR)

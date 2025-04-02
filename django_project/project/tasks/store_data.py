@@ -44,7 +44,7 @@ def process_crawler(start_date, end_date, crawler):
     if task.status == AnalysisTask.Status.COMPLETED:
         return
     parameters.update({"task_id": task.uuid.hex})
-    # Extract water body 
+    # Extract water body
     run_analysis(**parameters)
 
     # Once done, loop all water body belonging to this task,
@@ -63,7 +63,6 @@ def process_crawler(start_date, end_date, crawler):
             "mask_path": output.file.path,
         })
         run_analysis(**parameters)
-
 
 
 @app.task(name="update_stored_data")

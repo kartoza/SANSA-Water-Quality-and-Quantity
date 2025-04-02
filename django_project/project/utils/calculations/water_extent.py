@@ -3,7 +3,6 @@ import numpy as np
 import os
 from constance import config
 from rasterio.windows import Window
- 
 
 
 def calculate_water_extent_from_tif(tif_path, threshold=0.0):

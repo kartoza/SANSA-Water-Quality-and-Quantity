@@ -148,7 +148,12 @@ class Analysis:
         match = re.search(r"(\d{4})_(\d{2})" , os.path.basename(path))  # Extract YYYY and MM
         if match:
             year, month = match.groups()
-            observation_date = timezone.datetime(int(year), int(month), 1, tzinfo=timezone.get_current_timezone())
+            observation_date = timezone.datetime(
+                int(year),
+                int(month),
+                1,
+                tzinfo=timezone.get_current_timezone()
+            )
 
             with open(path, 'rb') as f:
                 django_file = File(f)
@@ -162,7 +167,7 @@ class Analysis:
                     observation_date=observation_date)
                 output.file.save(os.path.basename(path), django_file)
                 os.remove(path)
-                self.add_log(f"Output saved")
+                self.add_log("Output saved")
 
     def apply_mask(self, data_array):
         """Applies the raster mask if available, ensuring proper CRS."""
@@ -209,13 +214,13 @@ class Analysis:
     def extract_water_bodies(self, awei_data, year, month):
         """Extracts and saves multiple large water bodies from AWEI."""
         self.add_log(f"Extracting water bodies for {year}-{month:02d}")
-        # ✅ Step 1: Apply Water Threshold (AWEI ≥ 0)
+        # Step 1: Apply Water Threshold (AWEI ≥ 0)
         water_mask = (awei_data >= config.AWEI_THRESHOLD).astype(np.uint8)
 
-        # ✅ Step 2: Merge Nearby Pixels to Prevent Fragmentation
+        # Step 2: Merge Nearby Pixels to Prevent Fragmentation
         water_mask = binary_closing(water_mask, structure=np.ones((3, 3))).astype(np.uint8)
 
-        # ✅ Step 3: Label Connected Water Regions (Ensuring Diagonal Connectivity)
+        # Step 3: Label Connected Water Regions (Ensuring Diagonal Connectivity)
         labeled_array, num_features = label(water_mask, structure=np.ones((3, 3)))
 
         if num_features == 0:
@@ -224,16 +229,16 @@ class Analysis:
 
         self.add_log(f"Found {num_features} water bodies in {year}-{month:02d}")
 
-        # ✅ Step 4: Filter Out Small Water Bodies (Noise Removal)
-        min_pixels = config.WATER_BODY_MIN_PIXEL  # 🔥 Adjust based on resolution (e.g., 100 pixels ≈ 0.2 km²)
+        # Step 4: Filter Out Small Water Bodies (Noise Removal)
+        # Adjust based on resolution (e.g., 100 pixels ≈ 0.2 km²)
+        min_pixels = config.WATER_BODY_MIN_PIXEL
         unique_labels, counts = np.unique(labeled_array, return_counts=True)
         large_water_bodies = {
             label
             for label, count in zip(unique_labels, counts) if count >= min_pixels
         }
 
-        # ✅ Step 5: Loop Over Each Large Water Body & Save Separately
-        transform = awei_data.rio.transform()
+        # Step 5: Loop Over Each Large Water Body & Save Separately
         for i in large_water_bodies:
             if i == 0:  # Ignore background
                 continue
@@ -251,13 +256,13 @@ class Analysis:
                 # Crop AWEI data to this bounding box
                 cropped_awei = masked_awei.isel(y=slice(min_y, max_y + 1),
                                                 x=slice(min_x, max_x + 1))
-                # ✅ Fix: Reassign Coordinates to Match Cropped Data
+                # Fix: Reassign Coordinates to Match Cropped Data
                 cropped_awei = cropped_awei.assign_coords({
                     "y": masked_awei.y[min_y:max_y + 1],
                     "x": masked_awei.x[min_x:max_x + 1]
                 })
 
-                # ✅ Save as GeoTIFF
+                # Save as GeoTIFF
                 tiff_path = f"{self.output_dir}/{i}_AWEI_{year}_{month:02d}.tif"
                 cropped_awei.rio.to_raster(
                     tiff_path,
@@ -275,7 +280,7 @@ class Analysis:
 
         self.add_log(f"Finished extracting water bodies for {year}-{month:02d}")
 
-    def get_bbox(self,data_array):
+    def get_bbox(self, data_array):
         """Extracts bbox from monthly_ds and reprojects it to EPSG:4326."""
         # Get dataset CRS
         dataset_crs = data_array.rio.crs
@@ -288,7 +293,9 @@ class Analysis:
 
         # Transform bbox to EPSG:4326 if necessary
         if dataset_crs.to_epsg() != 4326:
-            minx, miny, maxx, maxy = transform_bounds(dataset_crs, "EPSG:4326", minx, miny, maxx, maxy)
+            minx, miny, maxx, maxy = transform_bounds(
+                dataset_crs, "EPSG:4326", minx, miny, maxx, maxy
+            )
 
         # Convert to Django PolygonField format
         bbox_polygon = [minx, miny, maxx, maxy]
@@ -375,8 +382,10 @@ class Analysis:
                             continue
                         else:
                             self.run_export_cog(month_data, cog_path)
-                            cog_path = generate_water_mask_from_tif(cog_path,
-                                                                    threshold=config.AWEI_TRESHOLD)['mask_path']
+                            cog_path = generate_water_mask_from_tif(
+                                cog_path,
+                                threshold=config.AWEI_TRESHOLD
+                            )['mask_path']
                             self.save_output(cog_path, calc_type, self.get_bbox(month_data))
                     else:
                         self.run_export_cog(month_data, cog_path)
