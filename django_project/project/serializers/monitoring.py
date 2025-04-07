@@ -18,7 +18,11 @@ class TaskOutputSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TaskOutput
-        fields = ['id', 'file', 'size', 'monitoring_type', 'created_at', 'observation_date', 'period']
+        fields = [
+            'id', 'file', 'size',
+            'monitoring_type', 'created_at', 'observation_date',
+            'period'
+        ]
 
 
 class AnalysisTaskStatusSerializer(serializers.ModelSerializer):

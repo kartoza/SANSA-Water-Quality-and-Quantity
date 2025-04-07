@@ -10,7 +10,7 @@ class TaskOutputFilter(django_filters.FilterSet):
 
     class Meta:
         model = TaskOutput
-        fields = ['task', 'monitoring_type__name', 'period']
+        fields = ['task__uuid', 'monitoring_type__name', 'period']
 
     def filter_bbox(self, queryset, name, value):
         # Expecting bbox in the format: "minx,miny,maxx,maxy"
