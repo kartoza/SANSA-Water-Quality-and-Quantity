@@ -6,6 +6,7 @@ from project.api_views import (
     WaterExtentStatusView,
     AWEIWaterMaskView,
     WaterMaskStatusView,
+    TaskOutputViewSet
 )
 from project.api_views.dataset import (
     DatasetOverviewView, )
@@ -28,4 +29,5 @@ urlpatterns = [
         name="water-mask-status",
     ),
     path("awei-water-mask/", AWEIWaterMaskView.as_view(), name="awei-water-mask"),
+    path("task-outputs/", TaskOutputViewSet.as_view({'get': 'list'}), name="task-output-list"),
 ]
