@@ -252,8 +252,6 @@ class Analysis:
             self.add_log(f"No water bodies found for {year}-{month:02d}")
             return
 
-        self.add_log(f"Found {num_features} water bodies in {year}-{month:02d}")
-
         # Step 4: Filter Out Small Water Bodies (Noise Removal)
         # Adjust based on resolution (e.g., 100 pixels ≈ 0.2 km²)
         min_pixels = config.WATER_BODY_MIN_PIXEL
@@ -262,6 +260,8 @@ class Analysis:
             label
             for label, count in zip(unique_labels, counts) if count >= min_pixels
         }
+        self.add_log(f"Found {len(large_water_bodies)} water bodies in {year}-{month:02d}")
+
 
         # Step 5: Loop Over Each Large Water Body & Save Separately
         for i in large_water_bodies:

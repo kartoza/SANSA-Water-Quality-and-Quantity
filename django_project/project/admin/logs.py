@@ -35,6 +35,6 @@ class UserActivityLogAdmin(admin.ModelAdmin):
 @admin.register(TaskLog)
 class TaskLogAdmin(admin.ModelAdmin):
     list_display = ('uuid', 'log', 'level', 'timestamp', 'content_type', 'object_id')
-    search_fields = ('uuid', 'log')
+    search_fields = ('uuid', 'log', 'object_id')
     list_filter = ('level', 'timestamp', 'content_type')
     ordering = ('-timestamp', )
