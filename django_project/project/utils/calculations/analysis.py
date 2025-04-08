@@ -25,6 +25,8 @@ from django.contrib.gis.geos import Polygon
 from project.models import MonitoringIndicatorType
 from project.models.monitor import TaskOutput
 from project.utils.calculations.water_extent import generate_water_mask_from_tif
+from collections import defaultdict
+from datetime import datetime
 
 logger = get_task_logger(__name__)
 
@@ -93,8 +95,30 @@ class Analysis:
             }}  # Optional cloud cover filter
         )
         # Search the STAC catalog for all items matching the query
+        # self.items = list(self.group_tiles_latest_date_catalog(query))
         self.items = list(query.items())
         self.add_log(f"Found: {len(self.items):d} datasets")
+
+    def group_tiles_latest_date_catalog(self, query):
+        items = list(query.items())
+
+        # Group items by tile (e.g., assume "mgrs:tile" is in item.properties)
+        tiles = defaultdict(list)
+
+        for item in items:
+            tile_id = item.properties.get("mgrs:tile") or item.id.split("_")[2]  # adjust this line depending on how tile ID is stored
+            tiles[tile_id].append(item)
+
+        # Select the most recent item for each tile
+        latest_per_tile = {}
+
+        for tile_id, tile_items in tiles.items():
+            latest_item = max(tile_items, key=lambda x: x.datetime)
+            latest_per_tile[tile_id] = latest_item
+
+        # Now `latest_per_tile.values()` gives you the latest tile for each tile ID
+        print(f"Selected {len(latest_per_tile)} latest tiles")
+        return latest_per_tile.values()
 
     def add_log(self, log, level=logging.INFO):
         print(log)
@@ -317,12 +341,7 @@ class Analysis:
             bbox=self.bbox,
             band_aliases={"nir": "nir08"}
         )
-        ds_computed = ds.compute()
 
-        # Save to pickle
-        with open("/home/web/media/dataset.pkl", "wb") as f:
-            import pickle
-            pickle.dump(ds_computed, f)
         if self.image_type == 'landsat':
             ds = ds.rename({"nir08": "nir"})
 

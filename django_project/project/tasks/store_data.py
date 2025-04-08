@@ -1,6 +1,9 @@
 import json
 import os
 import calendar
+import geopandas
+import geopandas as gpd
+from shapely.geometry import box
 
 from datetime import date, timedelta
 from celery.utils.log import get_task_logger
@@ -8,6 +11,7 @@ from django.contrib.auth import get_user_model
 from core.celery import app
 from django.utils import timezone
 
+from core.settings.utils import absolute_path
 from project.models.monitor import AnalysisTask, Crawler, TaskOutput, MonitoringIndicatorType
 from project.tasks.analysis import run_analysis
 from project.utils.helper import get_admin_user
@@ -18,9 +22,8 @@ logger = get_task_logger(__name__)
 User = get_user_model()
 
 
-@app.task(name="process_crawler")
-def process_crawler(start_date, end_date, crawler):
-    bbox = crawler.bbox.extent
+@app.task(name="process_catchment")
+def process_catchment(start_date, end_date, bbox, crawler):
     parameters = {
         "start_date": start_date.strftime("%Y-%m-%d"),
         "end_date": end_date.strftime("%Y-%m-%d"),
@@ -64,6 +67,19 @@ def process_crawler(start_date, end_date, crawler):
             "mask_path": output.file.path,
         })
         run_analysis(**parameters)
+
+
+@app.task(name="process_crawler")
+def process_crawler(start_date, end_date, crawler):
+    gdf = gpd.read_file(absolute_path('project', 'data', 'catchments.gpkg'), layer="catchments")
+
+    bbox = crawler.bbox.extent
+    # Create a shapely box (rectangle geometry)
+    bbox_geom = box(*bbox)
+    filtered = gdf[gdf.geometry.within(bbox_geom)]
+    for geom in filtered.geometry:
+        # process_catchment.delay(start_date, end_date, geom.bounds, crawler)
+        process_catchment(start_date, end_date, geom.bounds, crawler)
 
 
 @app.task(name="update_stored_data")

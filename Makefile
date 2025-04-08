@@ -14,13 +14,14 @@ up:
 	@echo "Running in production mode"
 	@echo "------------------------------------------------------------------"
 	@docker compose ${ARGS} up -d nginx django
+	@docker compose ${ARGS} up -d --scale worker=${WORKERS:-1} nginx django
 
 dev:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Running in dev mode"
 	@echo "------------------------------------------------------------------"
-	@docker compose ${ARGS} up -d dev worker
+	@docker compose ${ARGS} up -d --scale worker=${WORKERS:-1} dev worker
 
 down:
 	@echo
