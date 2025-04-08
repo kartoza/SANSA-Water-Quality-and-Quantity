@@ -37,7 +37,7 @@ def generate_water_mask_from_tif(awei_path, mask_output_path=None, threshold=Non
         dict: Dictionary with mask path and metadata.
     """
     if threshold is None:
-        threshold = config.AWEI_TRESHOLD
+        threshold = config.AWEI_THRESHOLD
 
     if not os.path.exists(awei_path):
         raise FileNotFoundError(f"AWEI file not found: {awei_path}")

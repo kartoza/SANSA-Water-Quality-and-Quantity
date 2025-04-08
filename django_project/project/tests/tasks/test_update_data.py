@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.test import override_settings
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from core.factories import UserFactory  # Assuming this is your factory import
+from core.factories import UserFactory
 from core.settings.utils import absolute_path
 from project.models.monitor import AnalysisTask, TaskOutput
 from project.utils.calculations.analysis import Analysis

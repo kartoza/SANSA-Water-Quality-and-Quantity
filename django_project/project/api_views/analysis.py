@@ -76,8 +76,8 @@ class WaterAnalysisAPIView(APIView):
         normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
 
         task = AnalysisTask.objects.filter(
-            parameters=parameters,
-            status=AnalysisTask.Status.COMPLETED).order_by('-created_at').first()
+            parameters=normalized_parameters
+        ).order_by('-created_at').first()
 
         if task:
             return Response(
@@ -98,7 +98,6 @@ class WaterAnalysisAPIView(APIView):
             result = run_analysis_task.delay(**parameters)
             task.celery_task_id = result.id
             task.save()
-            # run_analysis(**parameters)
 
             return Response(
                 {"message": {

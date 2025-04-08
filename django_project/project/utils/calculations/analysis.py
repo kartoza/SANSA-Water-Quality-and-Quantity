@@ -162,7 +162,7 @@ class Analysis:
                         monitoring_indicator_type=calc_type),
                     task=self.task,
                     size=os.path.getsize(path),
-                    created_by=self.task.created_by,
+                    created_by=self.task.created_by if self.task else None,
                     bbox=bbox,
                     observation_date=observation_date)
                 output.file.save(os.path.basename(path), django_file)
@@ -390,7 +390,7 @@ class Analysis:
                             self.run_export_cog(month_data, cog_path)
                             cog_path = generate_water_mask_from_tif(
                                 cog_path,
-                                threshold=config.AWEI_TRESHOLD
+                                threshold=config.AWEI_THRESHOLD
                             )['mask_path']
                             self.save_output(cog_path, calc_type, self.get_bbox(month_data))
                     else:
