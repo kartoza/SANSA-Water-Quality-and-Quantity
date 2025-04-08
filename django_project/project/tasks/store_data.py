@@ -1,7 +1,6 @@
 import json
 import os
 import calendar
-import geopandas
 import geopandas as gpd
 from shapely.geometry import box
 
@@ -78,12 +77,15 @@ def process_catchment(start_date, end_date, geom, crawler):
     )
     filtered = gdf[gdf.geometry.intersects(geom)].sort_values(by="area_m2", ascending=False)
     for idx, row in filtered.iterrows():
-        process_water_body(start_date, end_date, row.geometry.bounds, crawler.id, row.uid)
+        process_water_body.delay(start_date, end_date, row.geometry.bounds, crawler.id, row.uid)
 
 
 @app.task(name="process_crawler")
 def process_crawler(start_date, end_date, crawler):
-    gdf = gpd.read_file(absolute_path('project', 'data', 'catchments.gpkg'), layer="catchments")
+    gdf = gpd.read_file(
+        absolute_path('project', 'data', 'catchments.gpkg'),
+        layer="catchments"
+    )
 
     bbox = crawler.bbox.extent
     # Create a shapely box (rectangle geometry)
