@@ -74,7 +74,6 @@ def process_catchment(start_date, end_date, geom, crawler):
     gdf = gpd.read_file(absolute_path('project', 'data', 'sa_waterbodies.gpkg'), layer="waterbodies")
     filtered = gdf[gdf.geometry.within(geom)].sort_values(by="area_m2", ascending=False)
     for idx, row in filtered.iterrows():
-        # breakpoint()
         process_water_body.delay(start_date, end_date, row.geometry.bounds, crawler.id, row.uid)
 
 
@@ -87,7 +86,6 @@ def process_crawler(start_date, end_date, crawler):
     bbox_geom = box(*bbox)
     filtered = gdf[gdf.geometry.within(bbox_geom)]
     for geom in filtered.geometry:
-        # process_catchment.delay(start_date, end_date, geom.bounds, crawler)
         process_catchment(start_date, end_date, geom, crawler)
 
 
