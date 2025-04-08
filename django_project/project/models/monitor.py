@@ -147,7 +147,10 @@ class AnalysisTask(models.Model):
 
 def output_layer_dir_path(instance, filename):
     """Return upload directory path for Output Layer."""
-    file_path = f'{str(instance.created_by.pk)}/{str(instance.task.uuid)}/'
+    if instance.created_by:
+        file_path = f'{str(instance.created_by.pk)}/{str(instance.task.uuid)}/'
+    else:
+        file_path = f'0/{str(instance.task.uuid)}/'
     file_path = file_path + filename
     return file_path
 

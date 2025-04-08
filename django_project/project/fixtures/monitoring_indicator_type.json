@@ -48,9 +48,9 @@
         "model": "project.monitoringindicatortype",
         "pk": 6,
         "fields": {
-            "name": "AWEI_mask",
-            "description": "Automated Water Extraction Index",
-            "monitoring_indicator_type": "AWEI_mask"
+            "name": "AWEI_MASK",
+            "description": "Automated Water Extraction Index Mask",
+            "monitoring_indicator_type": "AWEI_MASK"
         }
     }
 ]
