@@ -192,6 +192,7 @@ class Analysis:
                 output.file.save(os.path.basename(path), django_file)
                 os.remove(path)
                 self.add_log("Output saved")
+                return output.file.path
 
     def apply_mask(self, data_array):
         """Applies the raster mask if available, ensuring proper CRS."""
@@ -404,7 +405,6 @@ class Analysis:
                     if calc_type == "AWEI":
                         if self.auto_detect_water:
                             self.extract_water_bodies(month_data, year, month)
-                            continue
                         else:
                             self.run_export_cog(month_data, cog_path)
                             cog_path = generate_water_mask_from_tif(

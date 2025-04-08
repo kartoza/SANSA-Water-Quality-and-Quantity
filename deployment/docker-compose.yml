@@ -87,7 +87,12 @@ services:
   worker:
     <<: *default-common-django
     entrypoint: []
-    command: 'celery -A core worker -l info  --logfile=/tmp/worker.log'
+    command: >
+      sh -c "celery -A core worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-2} --logfile=/tmp/worker.log"
+    env_file:
+      - .env
+    environment:
+      - CELERY_WORKER_CONCURRENCY
     links:
       - db
       - redis
@@ -96,12 +101,7 @@ services:
   celery_beat:
     <<: *default-common-django
     entrypoint: []
-    command: >
-      sh -c "celery -A core worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-2} --logfile=/tmp/worker.log"
-    env_file:
-      - .env
-    environment:
-      - CELERY_WORKER_CONCURRENCY
+    command: 'celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler --logfile=/tmp/celery_beat.log'
     links:
       - db
       - redis

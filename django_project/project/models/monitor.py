@@ -34,7 +34,7 @@ class MonitoringIndicatorType(models.Model):
     )
 
     def __str__(self):
-        return f"Monitoring Indicator Type {self.name}"
+        return self.name
 
 
 class MonitoringIndicator(models.Model):

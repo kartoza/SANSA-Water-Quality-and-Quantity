@@ -54,7 +54,7 @@ class AnalysisTaskAdmin(admin.ModelAdmin):
 
 @admin.register(TaskOutput)
 class TaskOutputAdmin(LeafletGeoAdmin):
-    list_display = ('task', 'monitoring_type', 'file', 'created_by', 'created_at')
+    list_display = ('task', 'monitoring_type', 'file', 'size', 'created_by', 'created_at')
     list_filter = ('monitoring_type', 'created_by')
     search_fields = ('task__task_name', 'monitoring_type__name', 'created_by__username')
     readonly_fields = ('created_at', )
