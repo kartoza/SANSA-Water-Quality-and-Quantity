@@ -69,9 +69,13 @@ def process_water_body(start_date, end_date, bbox, crawler_id, waterbody_uid):
         })
         run_analysis(**parameters)
 
+
 @app.task(name="process_catchment")
 def process_catchment(start_date, end_date, geom, crawler):
-    gdf = gpd.read_file(absolute_path('project', 'data', 'sa_waterbodies.gpkg'), layer="waterbodies")
+    gdf = gpd.read_file(
+        absolute_path('project', 'data', 'sa_waterbodies.gpkg'),
+        layer="waterbodies"
+    )
     filtered = gdf[gdf.geometry.intersects(geom)].sort_values(by="area_m2", ascending=False)
     for idx, row in filtered.iterrows():
         process_water_body(start_date, end_date, row.geometry.bounds, crawler.id, row.uid)

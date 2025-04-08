@@ -106,7 +106,7 @@ class Analysis:
         tiles = defaultdict(list)
 
         for item in items:
-            tile_id = item.properties.get("mgrs:tile") or item.id.split("_")[2]  # adjust this line depending on how tile ID is stored
+            tile_id = item.properties.get("mgrs:tile") or item.id.split("_")[2]
             tiles[tile_id].append(item)
 
         # Select the most recent item for each tile
@@ -116,7 +116,7 @@ class Analysis:
             latest_item = max(tile_items, key=lambda x: x.datetime)
             latest_per_tile[tile_id] = latest_item
 
-        # Now `latest_per_tile.values()` gives you the latest tile for each tile ID
+        # Now `latest_per_tile.values()` gives us the latest tile for each tile ID
         print(f"Selected {len(latest_per_tile)} latest tiles")
         return latest_per_tile.values()
 
@@ -261,7 +261,6 @@ class Analysis:
             for label, count in zip(unique_labels, counts) if count >= min_pixels
         }
         self.add_log(f"Found {len(large_water_bodies)} water bodies in {year}-{month:02d}")
-
 
         # Step 5: Loop Over Each Large Water Body & Save Separately
         for i in large_water_bodies:
