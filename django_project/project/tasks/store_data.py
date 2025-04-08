@@ -1,6 +1,8 @@
 import json
 import os
 import calendar
+import geopandas as gpd
+from shapely.geometry import box
 
 from datetime import date, timedelta
 from celery.utils.log import get_task_logger
@@ -8,6 +10,7 @@ from django.contrib.auth import get_user_model
 from core.celery import app
 from django.utils import timezone
 
+from core.settings.utils import absolute_path
 from project.models.monitor import AnalysisTask, Crawler, TaskOutput, MonitoringIndicatorType
 from project.tasks.analysis import run_analysis
 from project.utils.helper import get_admin_user
@@ -18,14 +21,14 @@ logger = get_task_logger(__name__)
 User = get_user_model()
 
 
-@app.task(name="process_crawler")
-def process_crawler(start_date, end_date, crawler):
-    bbox = crawler.bbox.extent
+@app.task(name="process_water_bocy")
+def process_water_body(start_date, end_date, bbox, crawler_id, waterbody_uid):
+    crawler = Crawler.objects.get(id=crawler_id)
     parameters = {
         "start_date": start_date.strftime("%Y-%m-%d"),
         "end_date": end_date.strftime("%Y-%m-%d"),
         "bbox": bbox,
-        "resolution": 20,
+        "resolution": crawler.resolution,
         "export_plot": False,
         "export_nc": False,
         "export_cog": True,
@@ -38,7 +41,7 @@ def process_crawler(start_date, end_date, crawler):
     task, _ = AnalysisTask.objects.get_or_create(
         parameters=parameters,
         defaults={
-            'task_name': f"Periodic Update {crawler.name} {year}-{month}",
+            'task_name': f"Periodic Update {crawler.name} {waterbody_uid} {year}-{month}",
             'created_by': get_admin_user()
         }
     )
@@ -64,6 +67,32 @@ def process_crawler(start_date, end_date, crawler):
             "mask_path": output.file.path,
         })
         run_analysis(**parameters)
+
+
+@app.task(name="process_catchment")
+def process_catchment(start_date, end_date, geom, crawler):
+    gdf = gpd.read_file(
+        absolute_path('project', 'data', 'sa_waterbodies.gpkg'),
+        layer="waterbodies"
+    )
+    filtered = gdf[gdf.geometry.intersects(geom)].sort_values(by="area_m2", ascending=False)
+    for idx, row in filtered.iterrows():
+        process_water_body.delay(start_date, end_date, row.geometry.bounds, crawler.id, row.uid)
+
+
+@app.task(name="process_crawler")
+def process_crawler(start_date, end_date, crawler):
+    gdf = gpd.read_file(
+        absolute_path('project', 'data', 'catchments.gpkg'),
+        layer="catchments"
+    )
+
+    bbox = crawler.bbox.extent
+    # Create a shapely box (rectangle geometry)
+    bbox_geom = box(*bbox)
+    filtered = gdf[gdf.geometry.within(bbox_geom)]
+    for geom in filtered.geometry:
+        process_catchment(start_date, end_date, geom, crawler)
 
 
 @app.task(name="update_stored_data")

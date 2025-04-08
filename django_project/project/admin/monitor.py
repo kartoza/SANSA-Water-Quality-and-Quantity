@@ -46,7 +46,7 @@ class TaskOutputInline(admin.TabularInline):
 class AnalysisTaskAdmin(admin.ModelAdmin):
     list_display = ('task_name', 'status', 'created_by', 'created_at', 'started_at', 'completed_at')
     list_filter = ('status', 'created_at', 'started_at', 'completed_at')
-    search_fields = ('task_name', 'created_by__username')
+    search_fields = ('task_name', 'created_by__username', 'uuid')
     readonly_fields = ('uuid', 'started_at', 'created_at', 'completed_at')
     inlines = [TaskOutputInline]
     ordering = ('-created_at', )
@@ -54,7 +54,7 @@ class AnalysisTaskAdmin(admin.ModelAdmin):
 
 @admin.register(TaskOutput)
 class TaskOutputAdmin(LeafletGeoAdmin):
-    list_display = ('task', 'monitoring_type', 'file', 'created_by', 'created_at')
+    list_display = ('task', 'monitoring_type', 'file', 'size', 'created_by', 'created_at')
     list_filter = ('monitoring_type', 'created_by')
     search_fields = ('task__task_name', 'monitoring_type__name', 'created_by__username')
     readonly_fields = ('created_at', )

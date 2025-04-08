@@ -34,7 +34,7 @@ class MonitoringIndicatorType(models.Model):
     )
 
     def __str__(self):
-        return f"Monitoring Indicator Type {self.name}"
+        return self.name
 
 
 class MonitoringIndicator(models.Model):
@@ -196,6 +196,7 @@ class Crawler(models.Model):
         choices=ImageType.choices,
         default=ImageType.SENTINEL,
     )
+    resolution = models.IntegerField(default=20)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)

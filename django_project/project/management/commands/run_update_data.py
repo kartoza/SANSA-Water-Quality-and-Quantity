@@ -10,4 +10,7 @@ class Command(BaseCommand):
     help = 'Run update data'
 
     def handle(self, *args, **options):
-        update_stored_data()
+        try:
+            update_stored_data()
+        except Exception as e:
+            print(e)
