@@ -87,8 +87,7 @@ services:
   worker:
     <<: *default-common-django
     entrypoint: []
-    command: >
-      sh -c "celery -A core worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-2} --logfile=/tmp/worker.log"
+    command: 'celery -A core worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-2} --logfile=/tmp/worker.log'
     env_file:
       - .env
     environment:
