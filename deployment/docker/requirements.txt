@@ -48,3 +48,4 @@ django-leaflet==0.31.0
 
 # settings
 django-constance[database]==4.3.2
+boto3==1.37.30

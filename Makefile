@@ -5,29 +5,29 @@ SHELL := /bin/bash
 WORKERS ?= 1
 
 build:
-        @echo
-        @echo "------------------------------------------------------------------"
-        @echo "Building in production mode"
-        @echo "------------------------------------------------------------------"
-        @docker compose build
+	@echo
+	@echo "------------------------------------------------------------------"
+	@echo "Building in production mode"
+	@echo "------------------------------------------------------------------"
+	@docker compose build
 
 up:
-        @echo
-        @echo "------------------------------------------------------------------"
-        @echo "Running in production mode with $(WORKERS) workers"
-        @echo "------------------------------------------------------------------"
-        @docker compose ${ARGS} --env-file $(ENV_FILE) up -d --scale worker=${WORKERS} nginx django
+	@echo
+	@echo "------------------------------------------------------------------"
+	@echo "Running in production mode with $(WORKERS) workers"
+	@echo "------------------------------------------------------------------"
+	@docker compose ${ARGS} --env-file $(ENV_FILE) up -d --scale worker=${WORKERS} nginx django
 
 dev:
-        @echo
-        @echo "------------------------------------------------------------------"
-        @echo "Running in dev mode with $(WORKERS) workers"
-        @echo "------------------------------------------------------------------"
-        @docker compose ${ARGS} --env-file $(ENV_FILE) up -d --scale worker=${WORKERS} dev worker
+	@echo
+	@echo "------------------------------------------------------------------"
+	@echo "Running in dev mode with $(WORKERS) workers"
+	@echo "------------------------------------------------------------------"
+	@docker compose ${ARGS} --env-file $(ENV_FILE) up -d --scale worker=${WORKERS} dev worker
 
 down:
-        @echo
-        @echo "------------------------------------------------------------------"
-        @echo "Removing production instance!!! "
-        @echo "------------------------------------------------------------------"
-        @docker compose --env-file $(ENV_FILE) down
+	@echo
+	@echo "------------------------------------------------------------------"
+	@echo "Removing production instance!!! "
+	@echo "------------------------------------------------------------------"
+	@docker compose --env-file $(ENV_FILE) down
