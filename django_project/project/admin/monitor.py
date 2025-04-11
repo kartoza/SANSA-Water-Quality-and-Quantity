@@ -2,7 +2,7 @@ from leaflet.admin import LeafletGeoAdmin
 from django.contrib import admin
 
 from project.models.monitor import (MonitoringIndicator, MonitoringIndicatorType, MonitoringReport,
-                                    ScheduledTask, AnalysisTask, TaskOutput, Crawler)
+                                    ScheduledTask, AnalysisTask, TaskOutput, Crawler, Province)
 
 
 @admin.register(MonitoringIndicatorType)
@@ -72,4 +72,7 @@ class CrawlerAdmin(LeafletGeoAdmin):
         if not obj.created_by:  # Only set if it's a new object
             obj.created_by = request.user
         obj.updated_by = request.user
-        obj.save()
+        obj.save(validate=False)
+
+
+admin.site.register(Province)
