@@ -935,6 +935,129 @@ paths:
                 status: error
                 message: "An unexpected error occurred on the server"
 
+  /api/task-outputs:
+    get:
+      summary: List the outputs from the analysis
+      description: Returns paginated task output filters for querying specific information.
+      operationId: getTaskOutputs
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - Datasets
+      parameters:
+        - name: monitoring_type__name
+          in: query
+          description: Filter by task output monitoring type (e.g., AWEI, NDTI, NDCI, SABI, CDOM).
+          schema:
+            type: string
+          example: AWEI
+        - name: from_date
+          in: query
+          description: Filter by starting date.
+          schema:
+            type: string
+          example: "2025-03-01"
+        - name: to_date
+          in: query
+          description: Filter by end date.
+          schema:
+            type: string
+          example: "2025-03-31"
+        - name: bbox
+          in: query
+          description: Bounding box coordinates (minLon, minLat, maxLon, maxLat).
+          schema:
+            type: string
+          example: "102.0,0.5,103.0,1.5"
+        - name: page
+          in: query
+          description: Page number for paginated results.
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: page_size
+          in: query
+          description: Number of items per page.
+          schema:
+            type: integer
+            default: 10
+          example: 10
+      responses:
+        "200":
+          description: Successful response with task outputs.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 1
+                  next:
+                    type: string
+                    format: uri
+                    nullable: true
+                    example: null
+                  previous:
+                    type: string
+                    format: uri
+                    nullable: true
+                    example: null
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 389
+                        file:
+                          type: string
+                          format: uri
+                          example: "http://0.0.0.0:8000/media/2/138e8bb7-3086-4c61-8503-5bfd8327c2d2/1_AWEI_2025_03.tif"
+                        size:
+                          type: integer
+                          description: File size in kilobytes
+                          example: 2466
+                        monitoring_type:
+                          type: string
+                          example: "AWEI"
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: "2025-04-08T07:29:26.736624Z"
+                        observation_date:
+                          type: string
+                          format: date
+                          example: "2025-03-01"
+                        period:
+                          type: string
+                          description: Frequency of the analysis
+                          example: "monthly"
+        "400":
+          description: Bad request due to invalid filter parameter
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Invalid filter parameter"
+        "401":
+          description: Unauthorized request due to missing or invalid authentication token
+          content:
+            application/json:
+              example:
+                status: error
+                message: "Missing or invalid authentication token"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                status: error
+                message: "An unexpected error occurred on the server"
+
+
 #  /api/auth/token:
 #    post:
 #      summary: Generate Authentication Token
