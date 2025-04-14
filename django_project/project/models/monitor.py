@@ -1,6 +1,8 @@
 import logging
 import uuid
 
+from django.core.exceptions import ValidationError
+from django.contrib.gis.geos import Polygon
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -182,6 +184,34 @@ class TaskOutput(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
 
+class Province(models.Model):
+    """Stores information about provinces.
+    """
+    name = models.CharField(max_length=100)
+    description = models.TextField(null=True, blank=True)
+    bbox = models.PolygonField(null=True, blank=True, srid=4326)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='provinces_created'
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='provinces_updated'
+
+    )
+
+    def __str__(self):
+        return self.name
+
+
 class Crawler(models.Model):
     """Stores information about web crawlers.
     """
@@ -191,22 +221,71 @@ class Crawler(models.Model):
 
     name = models.CharField(max_length=100)
     description = models.TextField(null=True, blank=True)
-    bbox = models.PolygonField()
+    province = models.ForeignKey(Province, on_delete=models.CASCADE, null=True, blank=True)
+    bbox = models.PolygonField(null=True, blank=True, srid=4326)
     image_type = models.CharField(
         choices=ImageType.choices,
         default=ImageType.SENTINEL,
     )
     resolution = models.IntegerField(default=20)
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='crawler_created'
+    )
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='updated_by',
+        related_name='crawler_updated_by',
         null=True,
         blank=True
     )
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        self._validate_and_set_bbox()
+
+    def save(self, *args, validate=True, **kwargs):
+        if validate:
+            self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def _validate_and_set_bbox(self):
+        """Validate and set province/bbox fields."""
+        is_new = self._state.adding
+
+        if is_new:
+            if self.province and self.bbox:
+                raise ValidationError(
+                    "Only one of 'province' or 'bbox' should be set on creation."
+                )
+            elif self.province:
+                self.bbox = self.province.bbox
+            elif not self.bbox:
+                raise ValidationError(
+                    "You must set either 'province' or 'bbox' when creating a Crawler."
+                )
+        else:
+            old = Crawler.objects.get(pk=self.pk)
+            province_changed = self.province != old.province
+            bbox_changed = self.bbox != old.bbox
+
+            if province_changed and bbox_changed:
+                raise ValidationError(
+                    "Only one of 'province' or 'bbox' may be changed at a time."
+                )
+            elif province_changed:
+                if self.province:
+                    if self.bbox != self.province.bbox:
+                        self.bbox = self.province.bbox
+                else:
+                    raise ValidationError(
+                        "Cannot unset province without providing a bbox."
+                    )
