@@ -63,7 +63,7 @@ class TaskOutputAdmin(LeafletGeoAdmin):
 
 @admin.register(Crawler)
 class CrawlerAdmin(LeafletGeoAdmin):
-    list_display = ('id', 'name', 'description', 'image_type', 'created_at', 'created_by')
+    list_display = ('name', 'description', 'image_type', 'created_at', 'created_by')
     list_filter = ('image_type', 'created_at')
     search_fields = ('name', 'description')
     readonly_fields = ('updated_by', 'created_by')
