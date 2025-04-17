@@ -10,6 +10,17 @@ from project.utils.calculations.water_extent import (calculate_water_extent_from
 logger = get_task_logger(__name__)
 
 
+def check_awei_output(task):
+    """
+    Check if AWEI output exists for the given task.
+    """
+    awei_type = str(MonitoringIndicatorType.Type.AWEI)
+    awei_output = (TaskOutput.objects.filter(
+        monitoring_type__name__iexact=awei_type,
+        task=task).order_by("-created_at").first())
+    return awei_output
+
+
 @app.task(bind=True, name="compute_water_extent_task")
 def compute_water_extent_task(self,
                               task_id,
@@ -34,27 +45,26 @@ def compute_water_extent_task(self,
         return {"error": error_msg}
     task.start()
 
-    analysis = Analysis(
-        start_date=start_date,
-        end_date=end_date,
-        bbox=bbox,
-        resolution=spatial_resolution,
-        export_nc=False,
-        export_plot=False,
-        export_cog=True,
-        calc_types=['AWEI'],
-        task=task,
-        mask_path=None,
-        auto_detect_water=False
-    )
-    analysis.run()
-
     try:
-        awei_type = str(MonitoringIndicatorType.Type.AWEI)
-        awei_output = (TaskOutput.objects.filter(
-            monitoring_type__name__iexact=awei_type,
-            task=task).order_by("-created_at").first())
+        awei_output = check_awei_output(task)
 
+        if not awei_output:
+            analysis = Analysis(
+                start_date=start_date,
+                end_date=end_date,
+                bbox=bbox,
+                resolution=spatial_resolution,
+                export_nc=False,
+                export_plot=False,
+                export_cog=True,
+                calc_types=['AWEI'],
+                task=task,
+                mask_path=None,
+                auto_detect_water=False
+            )
+            analysis.run()
+
+        awei_output = check_awei_output(task)
         if not awei_output:
             raise ValueError("AWEI output not found for this task.")
 
