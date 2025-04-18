@@ -10,6 +10,17 @@ from project.utils.calculations.water_extent import (calculate_water_extent_from
 logger = get_task_logger(__name__)
 
 
+def check_awei_output(task):
+    """
+    Check if AWEI output exists for the given task.
+    """
+    awei_type = str(MonitoringIndicatorType.Type.AWEI)
+    awei_output = (TaskOutput.objects.filter(
+        monitoring_type__name__iexact=awei_type,
+        task=task).order_by("-created_at").first())
+    return awei_output
+
+
 @app.task(bind=True, name="compute_water_extent_task")
 def compute_water_extent_task(self,
                               task_id,
@@ -22,6 +33,8 @@ def compute_water_extent_task(self,
     """
     Celery Task: Compute surface water extent using AWEI output.
     """
+    from project.utils.calculations.analysis import Analysis
+
     self.update_state(state="RUNNING")
     try:
         task = AnalysisTask.objects.get(uuid=task_id)
@@ -30,14 +43,28 @@ def compute_water_extent_task(self,
         logger.error(error_msg)
         self.update_state(state="FAILURE")
         return {"error": error_msg}
-
     task.start()
-    try:
-        awei_type = str(MonitoringIndicatorType.Type.AWEI)
-        awei_output = (TaskOutput.objects.filter(
-            monitoring_type__monitoring_indicator_type__iexact=awei_type,
-            task=task).order_by("-created_at").first())
 
+    try:
+        awei_output = check_awei_output(task)
+
+        if not awei_output:
+            analysis = Analysis(
+                start_date=start_date,
+                end_date=end_date,
+                bbox=bbox,
+                resolution=spatial_resolution,
+                export_nc=False,
+                export_plot=False,
+                export_cog=True,
+                calc_types=['AWEI'],
+                task=task,
+                mask_path=None,
+                auto_detect_water=False
+            )
+            analysis.run()
+
+        awei_output = check_awei_output(task)
         if not awei_output:
             raise ValueError("AWEI output not found for this task.")
 
@@ -54,16 +81,10 @@ def compute_water_extent_task(self,
         task.add_log(f"Water surface area calculated: {result['area_km2']} km²")
         task.complete()
         self.update_state(state="SUCCESS")
-    return {
-        "area_km2": result["area_km2"],
-        "task_id": task_id,
-        "bbox": bbox,
-        "spatial_resolution": spatial_resolution,
-        "input_type": input_type,
-        "start_date": start_date,
-        "end_date": end_date,
-        "threshold": threshold,
+    celery_result = {
+        "area_km2": float(result["area_km2"])
     }
+    return celery_result
 
 
 @app.task(bind=True, name="generate_water_mask_task")
@@ -92,7 +113,7 @@ def generate_water_mask_task(self,
         # Get AWEI output
         awei_type = str(MonitoringIndicatorType.Type.AWEI)
         awei_output = (TaskOutput.objects.filter(
-            monitoring_type__monitoring_indicator_type__iexact=awei_type,
+            monitoring_type__name__iexact=awei_type,
             task=task).order_by("-created_at").first())
 
         if not awei_output:
