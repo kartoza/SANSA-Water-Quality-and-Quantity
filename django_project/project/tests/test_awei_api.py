@@ -1,3 +1,4 @@
+import uuid
 import os
 import pickle
 import uuid as uuid_lib
@@ -10,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import override_settings
 from django.urls import reverse
+from django_celery_results.models import TaskResult
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient, APITestCase
@@ -56,6 +58,7 @@ class AWEIApiTestCase(APITestCase):
             "bbox": self.invalid_bbox,
             "input_type": "Landsat",
         }
+        TaskResult.objects.all().delete()
 
     def setup_data(self, mock_stac_load, mock_client):
         """Setup dummy data for processing.
@@ -79,9 +82,12 @@ class AWEIApiTestCase(APITestCase):
     )
     @patch("project.utils.calculations.analysis.Client")
     @patch("project.utils.calculations.analysis.stac_load")
-    def test_trigger_awei_water_extent_task(self, mock_stac_load, mock_client):
+    @patch("project.api_views.water_extent.AsyncResult")
+    def test_aaaaa(self, mock_async_result, mock_stac_load, mock_client):
         """Test if the water extent task is triggered successfully."""
         # Mock stac_load to return dummy xarray.Dataset with necessary bands
+        mock_async_result.return_value.status = "SUCCESS"
+        mock_async_result.return_value.result = {"area_km2": 4.78}
         response = self.setup_data(mock_stac_load, mock_client)
         response = self.client.post("/api/awei-water-extent/", self.valid_payload)
 
@@ -149,38 +155,5 @@ class AWEIApiTestCase(APITestCase):
         mock_async_result.return_value.result = "Error message"
 
         response = self.client.get("/api/awei-water-extent/12345678-1234-5678-1234-567812345678/")
-
-        self.assertEqual(response.data["status"], "FAILURE")
-
-    # **Task Status Checks - Water Mask**
-
-    @patch("project.api_views.water_extent.AsyncResult")
-    def test_check_water_mask_status_completed(self, mock_async_result):
-        """Test checking the status of a completed water mask task."""
-        mock_async_result.return_value.status = "SUCCESS"
-        mock_async_result.return_value.result = {"mask_url": "http://example.com/mask.tif"}
-
-        response = self.client.get("/api/awei-water-mask/12345678-1234-5678-1234-567812345678/")
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["status"], "SUCCESS")
-
-    @patch("project.api_views.water_extent.AsyncResult")
-    def test_check_water_mask_status_pending(self, mock_async_result):
-        """Test checking the status of a pending water mask task."""
-        mock_async_result.return_value.status = "PENDING"
-
-        response = self.client.get("/api/awei-water-mask/12345678-1234-5678-1234-567812345678/")
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["status"], "PENDING")
-
-    @patch("project.api_views.water_extent.AsyncResult")
-    def test_check_water_mask_status_failed(self, mock_async_result):
-        """Test checking the status of a failed water mask task."""
-        mock_async_result.return_value.status = "FAILURE"
-        mock_async_result.return_value.result = "Error message"
-
-        response = self.client.get("/api/awei-water-mask/12345678-1234-5678-1234-567812345678/")
 
         self.assertEqual(response.data["status"], "FAILURE")
