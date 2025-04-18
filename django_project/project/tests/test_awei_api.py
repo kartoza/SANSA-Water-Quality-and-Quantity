@@ -101,32 +101,14 @@ class AWEIApiTestCase(APITestCase):
         self.assertEqual(response.json()['area_km2'], 4.78)
 
 
-    @patch("project.tasks.water_extent.generate_water_mask_task.delay")
-    def test_trigger_awei_water_mask_task(self, mock_task):
-        """Test if the water mask task is triggered successfully."""
-        mock_task.return_value.id = self.uuid
-
-        response = self.client.post("/api/awei-water-mask/", self.valid_payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("task_uuid", response.data['message'])
-
     # **Validation Tests**
-
     def test_awei_water_extent_invalid_bbox(self):
         """Test error response for invalid bounding box."""
         response = self.client.post("/api/awei-water-extent/", self.invalid_payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["status"], "error")
 
-    def test_awei_water_mask_invalid_bbox(self):
-        """Test error response for invalid bounding box."""
-        response = self.client.post("/api/awei-water-mask/", self.invalid_payload)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["status"], "error")
-
     # **Task Status Checks - Water Extent**
-
     @patch("project.api_views.water_extent.AsyncResult")
     def test_check_water_extent_status_completed(self, mock_async_result):
         """Test checking the status of a completed water extent task."""

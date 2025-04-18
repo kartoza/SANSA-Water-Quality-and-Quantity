@@ -1,6 +1,6 @@
 # User Documentation
 ## Admin Page
-![alt text](images/sidebar.png)
+![alt text](../assets/images/sidebar.png)
 
 ### Description of the admin sidebar
 1. Filter, to search left sidebar.
@@ -11,19 +11,19 @@
 ## Add crawler
 1. Select Crawlers on th left sidebar.
 
-![alt text](image-1.png)
+![alt text](../assets/images/image-1.png)
 
 2. On the right sidebar, click **ADD CRAWLER**.
 
-![alt text](image-2.png)
+![alt text](../assets/images/image-2.png)
 
 3. Fill the Name, Description, Province, Image Type, and Resolution. Bbox will be populated automatically from selected Province.
 
-![alt text](images/image-0.png)
+![alt text](../assets/images/image-0.png)
 
 4. Click Save at the bottom of the page
 
-![alt text](image-3.png)
+![alt text](../assets/images/image-3.png)
 
 ## Run periodic task
 Periodic task has been set to run automatically on the 1st date every month. It will process data from previous month. Example: Periodic task that runs on March 1st 2025 will process data from February 2025. 
@@ -31,16 +31,16 @@ Periodic task has been set to run automatically on the 1st date every month. It 
 Follow these steps to run periodic task manually:
 1. Go to **Periodic tasks** menu on the left sidebar. You can also search it.
 
-![alt text](image-4.png)
+![alt text](../assets/images/image-4.png)
 
 2. Click on the checkbox to the left of **update_stored_data_monthly**.
 3. On the **Action** dropdown, select **Run selected tasks**.
 4. Click **Go**.
 
-![alt text](image-6.png)
+![alt text](../assets/images/image-6.png)
 5. A success message should be shown.
 
-![alt text](image-7.png)
+![alt text](../assets/images/image-7.png)
 
 ## Checking Task Logs
 1. Go to **Task logs** menu on the left sidebar. You can also search it.
