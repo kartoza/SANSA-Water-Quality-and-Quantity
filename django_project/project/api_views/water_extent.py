@@ -143,4 +143,3 @@ class WaterExtentStatusView(BaseTaskStatusView):
     API to check the status of an async Water Extent Calculation.
     """
     pass
-
