@@ -1,8 +1,19 @@
 from leaflet.admin import LeafletGeoAdmin
 from django.contrib import admin
+from django.contrib import messages
 
-from project.models.monitor import (MonitoringIndicator, MonitoringIndicatorType, MonitoringReport,
-                                    ScheduledTask, AnalysisTask, TaskOutput, Crawler, Province)
+from project.models.monitor import (
+    MonitoringIndicator, 
+    MonitoringIndicatorType, 
+    MonitoringReport, 
+    ScheduledTask, 
+    AnalysisTask, 
+    TaskOutput, 
+    Crawler,
+    CrawlProgress, 
+    Province
+)
+from project.tasks.store_data import update_stored_data
 
 
 @admin.register(MonitoringIndicatorType)
@@ -61,12 +72,21 @@ class TaskOutputAdmin(LeafletGeoAdmin):
     ordering = ('-created_at', )
 
 
+
+@admin.action(description="Run crawler for last month")
+def run_crawler(modeladmin, request, queryset):
+    update_stored_data(list(queryset.values_list('id', flat=True)))
+    message = f"Running {queryset.count()} selected crawlers."
+    messages.info(request, message)
+
+
 @admin.register(Crawler)
 class CrawlerAdmin(LeafletGeoAdmin):
     list_display = ('name', 'description', 'image_type', 'created_at', 'created_by')
     list_filter = ('image_type', 'created_at')
     search_fields = ('name', 'description')
     readonly_fields = ('updated_by', 'created_by')
+    actions = [run_crawler]
 
     def save_model(self, request, obj, form, change):
         if not obj.created_by:  # Only set if it's a new object
@@ -74,5 +94,11 @@ class CrawlerAdmin(LeafletGeoAdmin):
         obj.updated_by = request.user
         obj.save(validate=False)
 
+
+@admin.register(CrawlProgress)
+class CrawlProgressAdmin(admin.ModelAdmin):
+    list_display = ('crawler', 'started_at', 'completed_at', 'status', 'progress', 'data_to_process', 'processed_data')
+    search_fields = ('crawler__name', 'status')
+    list_filter = ('status', 'started_at', 'completed_at')
 
 admin.site.register(Province)
