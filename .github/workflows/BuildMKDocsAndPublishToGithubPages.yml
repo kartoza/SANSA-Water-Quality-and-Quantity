@@ -10,7 +10,8 @@ on:
       - "**.py"
       - "docs/**"
       - "assets/**"
-      - "swagger.html"
+      - "swagger/**"
+      - "index.html"
 
   pull_request:
     branches:
@@ -21,7 +22,8 @@ on:
       - "**.py"
       - "docs/**"
       - "assets/**"
-      - "swagger.html"
+      - "swagger/**"
+      - "index.html"
 
   workflow_dispatch:
 
@@ -70,13 +72,14 @@ jobs:
 
       - name: Build MkDocs site
         run: |
-          mkdocs build --config-file docs/mkdocs.yml --site-dir site/docs
+          mkdocs build --config-file docs/mkdocs.yml --site-dir _mkdocs_site
 
       - name: Copy Swagger HTML to site root
         run: |
           mkdir -p site
+          rsync -a _mkdocs_site/ site/docs/
           cp index.html site/index.html
-          cp -r swagger site/swagger
+          rsync -a swagger/ site/swagger/
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
@@ -122,4 +125,4 @@ jobs:
 
       - name: Build MkDocs site (no deploy)
         run: |
-          mkdocs build --config-file docs/mkdocs.yml --site-dir site/docs
+          mkdocs build --config-file docs/mkdocs.yml --site-dir _mkdocs_site
