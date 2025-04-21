@@ -53,6 +53,7 @@ jobs:
           packages: |
             mkdocs-material
             mkdocs-video
+            mkdocstrings[python]
             qrcode
 
       - name: Create MkDocs Config 🚀
@@ -95,6 +96,7 @@ jobs:
           packages: |
             mkdocs-material
             mkdocs-video
+            mkdocstrings[python]
             qrcode
 
       - name: Create MkDocs Config 🚀
