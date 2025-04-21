@@ -75,7 +75,8 @@ jobs:
       - name: Copy Swagger HTML to site root
         run: |
           mkdir -p site
-          cp swagger.html site/index.html
+          cp index.html site/index.html
+          cp -r swagger site/swagger
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
