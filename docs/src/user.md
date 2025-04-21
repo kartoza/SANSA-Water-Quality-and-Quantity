@@ -2,13 +2,13 @@
 ## Admin Page
 ![alt text](../assets/images/sidebar.png)
 
-### Description of the admin sidebar
+### Description of The Admin Sidebar
 1. Filter, to search left sidebar.
 2. Sidebar menu, click to show the record.
 3. Toggle hide/show sidebar
 
 
-## Add crawler
+## Add Crawler
 1. Select Crawlers on th left sidebar.
 
 ![alt text](../assets/images/image-1.png)
@@ -25,9 +25,10 @@
 
 ![alt text](../assets/images/image-3.png)
 
-## Run periodic task
+## Run Periodic Task
 Periodic task has been set to run automatically on the 1st date every month. It will process data from previous month. Example: Periodic task that runs on March 1st 2025 will process data from February 2025. 
 
+### Run All Crawler
 Follow these steps to run periodic task manually:
 1. Go to **Periodic tasks** menu on the left sidebar. You can also search it.
 
@@ -41,6 +42,27 @@ Follow these steps to run periodic task manually:
 5. A success message should be shown.
 
 ![alt text](../assets/images/image-7.png)
+
+
+### Run selected crawler
+Follow these steps to run periodic task manually:
+1. Go to **Crawlers** menu on the left sidebar. You can also search it.
+2. Select the Crawlers that you want to run.
+3. Click dropdown, select **Run crawler for last month**.
+4. Click **Go**
+
+![alt text](../assets/images/run-crawler-1.png)
+
+5. Success essage should be shown
+
+![alt text](../assets/images/run-crawler-2.png)
+
+### Show Crawler Progress
+1. Go to **Crawl progresses** menu on the left sidebar. You can also search it.
+
+2. You can see the progress
+
+![alt text](../assets/images/crawler-progress.png)
 
 ## Checking Task Logs
 1. Go to **Task logs** menu on the left sidebar. You can also search it.

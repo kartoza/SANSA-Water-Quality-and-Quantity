@@ -294,14 +294,19 @@ class CrawlProgress(models.Model):
     data_to_process = models.IntegerField(default=0)
     processed_data = models.IntegerField(default=0)
     progress = models.FloatField(default=0)
-    status = models.CharField(max_length=20, default=Status.PENDING)
+    status = models.CharField(max_length=20, default=Status.PENDING, choices=Status.choices)
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['-started_at']
+        verbose_name = 'Crawl Progress'
+        verbose_name_plural = 'Crawl Progresses'
+
     def __str__(self):
         return f"Crawl Progress for {self.crawler.name}"
-    
+
     def increment_processed_data(self):
         # Increment processed_data by 1 using F expression
         CrawlProgress.objects.filter(pk=self.pk).update(processed_data=F('processed_data') + 1)
@@ -319,3 +324,8 @@ class CrawlProgress(models.Model):
 
         # Save the updated progress
         self.save()
+
+    def save(self, *args, **kwargs):
+        if self.data_to_process > 0:
+            self.progress = int(self.processed_data / self.data_to_process) * 100
+        super().save(*args, **kwargs)

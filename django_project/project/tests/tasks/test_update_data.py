@@ -98,7 +98,7 @@ class TestUpdateData(APITestCase):
         tz_now = timezone.now().replace(year=2025, month=4, day=2)
         with patch("project.tasks.store_data.timezone.now") as mock_tz_now:
             with patch("project.tasks.store_data.gpd.read_file") as mock_read_file:
-                mock_read_file.side_effect = [gdf_water_body, gdf_catchment]
+                mock_read_file.side_effect = [gdf_catchment, gdf_water_body]
                 mock_tz_now.return_value = tz_now
                 self.setup_data(mock_stac_load, mock_client)
                 update_stored_data()

@@ -12,10 +12,10 @@ from django.utils import timezone
 
 from core.settings.utils import absolute_path
 from project.models.monitor import (
-    AnalysisTask, 
-    Crawler, 
+    AnalysisTask,
+    Crawler,
     CrawlProgress,
-    TaskOutput, 
+    TaskOutput,
     MonitoringIndicatorType,
     Status
 )
@@ -32,7 +32,7 @@ User = get_user_model()
 def process_water_body(start_date, end_date, bbox, crawler_progress_id, waterbody_uid):
     crawler_progress = CrawlProgress.objects.get(id=crawler_progress_id)
     crawler = crawler_progress.crawler
-    
+
     parameters = {
         "start_date": start_date.strftime("%Y-%m-%d"),
         "end_date": end_date.strftime("%Y-%m-%d"),
@@ -81,26 +81,19 @@ def process_water_body(start_date, end_date, bbox, crawler_progress_id, waterbod
 
 @app.task(name="process_catchment")
 def process_catchment(start_date, end_date, geom, crawler_progress, gdf_waterbodies):
-    filtered = gdf_waterbodies[gdf_waterbodies.geometry.intersects(geom)].sort_values(
-        by="area_m2", ascending=False
-    )
-    for idx, row in filtered.iterrows():
-        process_water_body.delay(start_date, end_date, row.geometry.bounds, crawler_progress.id, row.uid)
+    for idx, row in gdf_waterbodies.iterrows():
+        process_water_body.delay(
+            start_date,
+            end_date,
+            row.geometry.bounds,
+            crawler_progress.id,
+            row.uid
+            )
 
 
 @app.task(name="process_crawler")
 def process_crawler(start_date, end_date, crawler_id):
-    gdf_waterbodies = gpd.read_file(
-        absolute_path('project', 'data', 'sa_waterbodies.gpkg'),
-        layer="waterbodies"
-    )
     crawler = Crawler.objects.get(id=crawler_id)
-    crawler_progress = CrawlProgress.objects.create(
-        crawler=crawler,
-        status=Status.RUNNING,
-        data_to_process=len([1]),
-        started_at=timezone.now(),
-    )
     gdf_catchment = gpd.read_file(
         absolute_path('project', 'data', 'catchments.gpkg'),
         layer="catchments"
@@ -109,8 +102,24 @@ def process_crawler(start_date, end_date, crawler_id):
     bbox = crawler.bbox.extent
     # Create a shapely box (rectangle geometry)
     bbox_geom = box(*bbox)
-    filtered = gdf_catchment[gdf_catchment.geometry.within(bbox_geom)]
-    for geom in filtered.geometry:
+    gdf_catchment = gdf_catchment[gdf_catchment.geometry.within(bbox_geom)]
+
+    gdf_waterbodies = gpd.read_file(
+        absolute_path('project', 'data', 'sa_waterbodies.gpkg'),
+        layer="waterbodies"
+    )
+    gdf_waterbodies = gdf_waterbodies[gdf_waterbodies.geometry.intersects(
+        gdf_catchment.geometry.unary_union
+        )].sort_values(
+        by="area_m2", ascending=False
+    )
+    crawler_progress = CrawlProgress.objects.create(
+        crawler=crawler,
+        status=Status.RUNNING,
+        data_to_process=len(gdf_waterbodies),
+        started_at=timezone.now(),
+    )
+    for geom in gdf_catchment.geometry:
         process_catchment(start_date, end_date, geom, crawler_progress, gdf_waterbodies)
 
 
@@ -136,7 +145,7 @@ def update_stored_data(crawler_ids=None):
     crawlers = Crawler.objects.all()
     if crawler_ids:
         crawlers = crawlers.filter(id__in=crawler_ids)
-    
+
     for crawler in crawlers:
         process_crawler.delay(start_date, end_date, crawler.id)
     return {"message": "Task already completed."}

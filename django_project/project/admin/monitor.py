@@ -3,14 +3,14 @@ from django.contrib import admin
 from django.contrib import messages
 
 from project.models.monitor import (
-    MonitoringIndicator, 
-    MonitoringIndicatorType, 
-    MonitoringReport, 
-    ScheduledTask, 
-    AnalysisTask, 
-    TaskOutput, 
+    MonitoringIndicator,
+    MonitoringIndicatorType,
+    MonitoringReport,
+    ScheduledTask,
+    AnalysisTask,
+    TaskOutput,
     Crawler,
-    CrawlProgress, 
+    CrawlProgress,
     Province
 )
 from project.tasks.store_data import update_stored_data
@@ -72,7 +72,6 @@ class TaskOutputAdmin(LeafletGeoAdmin):
     ordering = ('-created_at', )
 
 
-
 @admin.action(description="Run crawler for last month")
 def run_crawler(modeladmin, request, queryset):
     update_stored_data(list(queryset.values_list('id', flat=True)))
@@ -97,8 +96,13 @@ class CrawlerAdmin(LeafletGeoAdmin):
 
 @admin.register(CrawlProgress)
 class CrawlProgressAdmin(admin.ModelAdmin):
-    list_display = ('crawler', 'started_at', 'completed_at', 'status', 'progress', 'data_to_process', 'processed_data')
+    list_display = (
+        'crawler', 'started_at', 'completed_at',
+        'status', 'progress', 'data_to_process',
+        'processed_data'
+    )
     search_fields = ('crawler__name', 'status')
     list_filter = ('status', 'started_at', 'completed_at')
+
 
 admin.site.register(Province)
