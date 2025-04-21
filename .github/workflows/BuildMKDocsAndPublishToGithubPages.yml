@@ -76,8 +76,8 @@ jobs:
 
       - name: Copy Swagger HTML to site root
         run: |
-          mkdir -p site
-          rsync -a _mkdocs_site/ site/docs/
+          mkdir -p site/docs
+          rsync -a docs/_mkdocs_site/ site/docs/
           cp index.html site/index.html
           rsync -a swagger/ site/swagger/
 
