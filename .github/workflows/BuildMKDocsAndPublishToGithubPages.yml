@@ -11,6 +11,18 @@ on:
       - "docs/**"
       - "assets/**"
       - "swagger.html"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/**"
+      - "**.md"
+      - "**.py"
+      - "docs/**"
+      - "assets/**"
+      - "swagger.html"
+
   workflow_dispatch:
 
 permissions:
@@ -23,22 +35,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Build and Deploy Docs + Swagger
+  build-and-deploy:
+    name: Build Docs + Swagger
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
 
     steps:
       - name: Checkout main from GitHub
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        uses: timlinux/pip-action@v1
+        uses: BSFishy/pip-action@v1
         with:
           packages: |
             mkdocs-material
+            mdx_gh_links
+            mkdocs-pdf-export-plugin
+            mkdocstrings-python
+            mkdocs-video
+            mkdocs-redirects
+            mkdocs-enumerate-headings-plugin
+            mkdocs-git-revision-date-localized-plugin
+            shortuuid
+            black
+            cffi
             qrcode
 
       - name: Create MkDocs Config 🚀
@@ -65,3 +88,37 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  test-pr:
+    name: Test Docs Build on PR
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        uses: BSFishy/pip-action@v1
+        with:
+          packages: |
+            mkdocs-material
+            mdx_gh_links
+            mkdocs-pdf-export-plugin
+            mkdocstrings-python
+            mkdocs-video
+            mkdocs-redirects
+            mkdocs-enumerate-headings-plugin
+            mkdocs-git-revision-date-localized-plugin
+            shortuuid
+            black
+            cffi
+            qrcode
+
+      - name: Create MkDocs Config 🚀
+        working-directory: ./docs
+        run: ./create-mkdocs-html-config.sh
+
+      - name: Build MkDocs site (no deploy)
+        run: |
+          mkdocs build --config-file docs/mkdocs.yml --site-dir site/docs
