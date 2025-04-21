@@ -3,6 +3,7 @@ import uuid
 
 from django.core.exceptions import ValidationError
 from django.contrib.gis.geos import Polygon
+from django.db.models import F
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -10,6 +11,13 @@ from django.contrib.auth import get_user_model
 from project.models.dataset import Dataset
 
 User = get_user_model()
+
+
+class Status(models.TextChoices):
+    PENDING = 'pending', _('Pending')
+    RUNNING = 'running', _('Running')
+    COMPLETED = 'completed', _('Completed')
+    FAILED = 'failed', _('Failed')
 
 
 class MonitoringIndicatorType(models.Model):
@@ -71,13 +79,6 @@ class ScheduledTask(models.Model):
     """
     Tracks scheduled background jobs.
     """
-
-    class Status(models.TextChoices):
-        PENDING = 'pending', _('Pending')
-        RUNNING = 'running', _('Running')
-        COMPLETED = 'completed', _('Completed')
-        FAILED = 'failed', _('Failed')
-
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
 
     task_name = models.CharField(null=False, blank=False, max_length=100)
@@ -97,13 +98,6 @@ class AnalysisTask(models.Model):
     """
     Tracks analysis tasks.
     """
-
-    class Status(models.TextChoices):
-        PENDING = 'pending', _('Pending')
-        RUNNING = 'running', _('Running')
-        COMPLETED = 'completed', _('Completed')
-        FAILED = 'failed', _('Failed')
-
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
     task_name = models.CharField(null=False, blank=False, max_length=100)
     status = models.CharField(choices=Status.choices,
@@ -122,12 +116,12 @@ class AnalysisTask(models.Model):
         return self.task_name
 
     def start(self):
-        self.status = self.Status.RUNNING
+        self.status = Status.RUNNING
         self.started_at = timezone.now()
         self.save()
 
     def complete(self):
-        self.status = self.Status.COMPLETED
+        self.status = Status.COMPLETED
         self.completed_at = timezone.now()
         self.save()
 
@@ -289,3 +283,49 @@ class Crawler(models.Model):
                     raise ValidationError(
                         "Cannot unset province without providing a bbox."
                     )
+
+
+class CrawlProgress(models.Model):
+    """
+    Stores progress of a crawler.
+    """
+
+    crawler = models.ForeignKey(Crawler, on_delete=models.CASCADE)
+    data_to_process = models.IntegerField(default=0)
+    processed_data = models.IntegerField(default=0)
+    progress = models.FloatField(default=0)
+    status = models.CharField(max_length=20, default=Status.PENDING, choices=Status.choices)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-started_at']
+        verbose_name = 'Crawl Progress'
+        verbose_name_plural = 'Crawl Progresses'
+
+    def __str__(self):
+        return f"Crawl Progress for {self.crawler.name}"
+
+    def increment_processed_data(self):
+        # Increment processed_data by 1 using F expression
+        CrawlProgress.objects.filter(pk=self.pk).update(processed_data=F('processed_data') + 1)
+
+        # Refresh from DB to get the updated value
+        self.refresh_from_db(fields=['processed_data', 'data_to_process'])
+
+        # Recalculate progress
+        if self.data_to_process > 0:
+            self.progress = int((self.processed_data / self.data_to_process) * 100)
+
+        if self.progress >= 100:
+            self.status = Status.COMPLETED
+            self.completed_at = timezone.now()
+
+        # Save the updated progress
+        self.save()
+
+    def save(self, *args, **kwargs):
+        if self.data_to_process > 0:
+            self.progress = int(self.processed_data / self.data_to_process) * 100
+        super().save(*args, **kwargs)

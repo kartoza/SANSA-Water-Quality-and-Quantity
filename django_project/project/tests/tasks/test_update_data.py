@@ -16,7 +16,7 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from core.factories import UserFactory
 from core.settings.utils import absolute_path
-from project.models.monitor import AnalysisTask, TaskOutput
+from project.models.monitor import AnalysisTask, TaskOutput, CrawlProgress
 from project.utils.calculations.analysis import Analysis
 from project.tests.factories.monitor import CrawlerFactory
 from project.tasks.store_data import update_stored_data
@@ -86,6 +86,10 @@ class TestUpdateData(APITestCase):
         """
         Test that the update data creates expected output files (AWEI, NDCI, NDTI).
         """
+
+        crawler_progresses = CrawlProgress.objects.all()
+        self.assertEqual(crawler_progresses.count(), 0)
+
         gdf_catchment = self.get_catchment_gdf(self.crawler)
         gdf_water_body = self.get_water_body_gdf(gdf_catchment.iloc[0].geometry)
         gdf_water_body = gdf_water_body[gdf_water_body["uid"] == "k6j618e21q"]
@@ -115,3 +119,9 @@ class TestUpdateData(APITestCase):
             set(outputs.values_list('observation_date', flat=True)), 
             {datetime.date(2025, 3, 1)}
         )
+
+        crawler_progresses = CrawlProgress.objects.all()
+        crawler_progress = crawler_progresses.first()
+        self.assertEqual(crawler_progress.progress, 100)
+        self.assertIsNotNone(crawler_progress.completed_at)
+        self.assertEqual(crawler_progress.status, 'completed')
