@@ -43,7 +43,7 @@ class PollutionAnalyzer:
         """
         with rasterio.open(raster_path) as src:
             # Reproject raster to EPSG:4326
-            dst_crs = 'EPSG:4326'
+            dst_crs = sources.crs
             transform, width, height = calculate_default_transform(
                 src.crs, dst_crs, src.width, src.height, *src.bounds)
 
@@ -78,7 +78,9 @@ class PollutionAnalyzer:
                             mean_pollution = np.mean(out_image[out_image != dst.nodata])
                             results.append({
                                 "id": source["id"],
-                                "mean_index": float(mean_pollution) if mean_pollution is not None else None
+                                "mean_index": float(mean_pollution) if
+                                mean_pollution is not None
+                                else None
                             })
                         except Exception as e:
                             logging.warning(f"Skipping {source['id']}: {str(e)}")
