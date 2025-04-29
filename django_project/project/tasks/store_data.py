@@ -94,10 +94,6 @@ def process_catchment(start_date, end_date, geom, crawler_progress, gdf_waterbod
 @app.task(name="process_crawler")
 def process_crawler(start_date, end_date, crawler_id):
     crawler = Crawler.objects.get(id=crawler_id)
-    gdf_catchment = gpd.read_file(
-        absolute_path('project', 'data', 'catchments.gpkg'),
-        layer="catchments"
-    )
 
     bbox = crawler.bbox.extent
     # Create a shapely box (rectangle geometry)
