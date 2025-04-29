@@ -77,8 +77,8 @@ class TestUpdateData(APITestCase):
         """Test that process_water_body is called as the amount of waterbody"""
         update_stored_data()
 
-        # check that process_water_body.delay is called 374 times
-        self.assertEqual(mock_process_water_body.call_count, 374)
+        # check that process_water_body.delay is called 3671 times
+        self.assertEqual(mock_process_water_body.call_count, 3671)
 
     @patch("project.utils.calculations.analysis.Client")
     @patch("project.utils.calculations.analysis.stac_load")

@@ -88,7 +88,7 @@ def process_catchment(start_date, end_date, geom, crawler_progress, gdf_waterbod
             row.geometry.bounds,
             crawler_progress.id,
             row.uid
-            )
+        )
 
 
 @app.task(name="process_crawler")
@@ -102,25 +102,28 @@ def process_crawler(start_date, end_date, crawler_id):
     bbox = crawler.bbox.extent
     # Create a shapely box (rectangle geometry)
     bbox_geom = box(*bbox)
-    gdf_catchment = gdf_catchment[gdf_catchment.geometry.within(bbox_geom)]
 
     gdf_waterbodies = gpd.read_file(
         absolute_path('project', 'data', 'sa_waterbodies.gpkg'),
         layer="waterbodies"
     )
-    gdf_waterbodies = gdf_waterbodies[gdf_waterbodies.geometry.intersects(
-        gdf_catchment.geometry.unary_union
-        )].sort_values(
-        by="area_m2", ascending=False
-    )
+    gdf_waterbodies = gdf_waterbodies[gdf_waterbodies.geometry.apply(
+        lambda geom: geom.intersects(bbox_geom)
+    )].sort_values(by="area_m2", ascending=False)
     crawler_progress = CrawlProgress.objects.create(
         crawler=crawler,
         status=Status.RUNNING,
         data_to_process=len(gdf_waterbodies),
         started_at=timezone.now(),
     )
-    for geom in gdf_catchment.geometry:
-        process_catchment(start_date, end_date, geom, crawler_progress, gdf_waterbodies)
+    for idx, row in gdf_waterbodies.iterrows():
+        process_water_body.delay(
+            start_date,
+            end_date,
+            row.geometry.bounds,
+            crawler_progress.id,
+            row.uid
+        )
 
 
 @app.task(name="update_stored_data")
@@ -147,5 +150,5 @@ def update_stored_data(crawler_ids=None):
         crawlers = crawlers.filter(id__in=crawler_ids)
 
     for crawler in crawlers:
-        process_crawler.delay(start_date, end_date, crawler.id)
+        process_crawler(start_date, end_date, crawler.id)
     return {"message": "Task already completed."}
