@@ -1,11 +1,13 @@
-import rasterio
-import numpy as np
 import os
-import geopandas as gpd
 import json
 import logging
+import numpy as np
+import geopandas as gpd
+import rasterio
 from rasterio.mask import mask
+from rasterio.warp import calculate_default_transform, reproject, Resampling
 from shapely.geometry import mapping
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -40,20 +42,48 @@ class PollutionAnalyzer:
         :param output_json: Path to save the JSON report.
         """
         with rasterio.open(raster_path) as src:
-            results = []
-            for _, source in sources.iterrows():
-                geom = [mapping(source.geometry)]
-                try:
-                    out_image, _ = mask(src, geom, crop=True)
-                    mean_pollution = np.mean(out_image[out_image != src.nodata])
-                    results.append({
-                        "id":
-                        source["id"],
-                        "mean_index":
-                        float(mean_pollution) if mean_pollution is not None else None
-                    })
-                except Exception as e:
-                    logging.warning(f"Skipping {source['id']}: {str(e)}")
+            # Reproject raster to EPSG:4326
+            dst_crs = sources.crs
+            transform, width, height = calculate_default_transform(
+                src.crs, dst_crs, src.width, src.height, *src.bounds)
+
+            kwargs = src.meta.copy()
+            kwargs.update({
+                'crs': dst_crs,
+                'transform': transform,
+                'width': width,
+                'height': height
+            })
+
+            # Create in-memory reprojection target
+            with rasterio.MemoryFile() as memfile:
+                with memfile.open(**kwargs) as dst:
+                    for i in range(1, src.count + 1):
+                        reproject(
+                            source=rasterio.band(src, i),
+                            destination=rasterio.band(dst, i),
+                            src_transform=src.transform,
+                            src_crs=src.crs,
+                            dst_transform=transform,
+                            dst_crs=dst_crs,
+                            resampling=Resampling.nearest
+                        )
+
+                    # Now dst is the reprojected raster in EPSG:4326
+                    results = []
+                    for _, source in sources.iterrows():
+                        geom = [mapping(source.geometry)]
+                        try:
+                            out_image, _ = mask(dst, geom, crop=True)
+                            mean_pollution = np.mean(out_image[out_image != dst.nodata])
+                            results.append({
+                                "id": source["id"],
+                                "mean_index": float(mean_pollution) if
+                                mean_pollution is not None
+                                else None
+                            })
+                        except Exception as e:
+                            logging.warning(f"Skipping {source['id']}: {str(e)}")
 
         with open(output_json, "w") as f:
             json.dump(results, f, indent=4)
