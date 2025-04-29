@@ -146,5 +146,5 @@ def update_stored_data(crawler_ids=None):
         crawlers = crawlers.filter(id__in=crawler_ids)
 
     for crawler in crawlers:
-        process_crawler(start_date, end_date, crawler.id)
+        process_crawler.delay(start_date, end_date, crawler.id)
     return {"message": "Task already completed."}
