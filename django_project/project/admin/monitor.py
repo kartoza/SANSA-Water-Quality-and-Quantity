@@ -57,7 +57,7 @@ class TaskOutputInline(admin.TabularInline):
 class AnalysisTaskAdmin(admin.ModelAdmin):
     list_display = ('task_name', 'status', 'created_by', 'created_at', 'started_at', 'completed_at')
     list_filter = ('status', 'created_at', 'started_at', 'completed_at')
-    search_fields = ('task_name', 'created_by__username', 'uuid')
+    search_fields = ('task_name', 'created_by__username', 'uuid', 'celery_task_id')
     readonly_fields = ('uuid', 'started_at', 'created_at', 'completed_at')
     inlines = [TaskOutputInline]
     ordering = ('-created_at', )

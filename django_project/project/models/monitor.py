@@ -127,7 +127,7 @@ class AnalysisTask(models.Model):
         self.save()
 
     def failed(self):
-        self.status = self.Status.FAILED
+        self.status = Status.FAILED
         self.completed_at = timezone.now()
         self.save()
 
@@ -329,4 +329,7 @@ class CrawlProgress(models.Model):
     def save(self, *args, **kwargs):
         if self.data_to_process > 0:
             self.progress = int(self.processed_data / self.data_to_process) * 100
+            if self.progress >= 100:
+                self.status = Status.COMPLETED
+                self.completed_at = timezone.now()
         super().save(*args, **kwargs)
