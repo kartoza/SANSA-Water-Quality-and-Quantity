@@ -27,7 +27,7 @@ def run_analysis(start_date,
         task = AnalysisTask.objects.get(uuid=task_id)
     except AnalysisTask.DoesNotExist:
         logger.error(f"Task with id {task_id} does not exist.")
-        return
+        return False
 
     task.start()
     try:
@@ -49,8 +49,10 @@ def run_analysis(start_date,
     except Exception as e:
         task.add_log(str(e), logging.ERROR)
         task.failed()
+        return False
     else:
         task.complete()
+        return True
 
 
 @app.task(bind=True, name='run_analysis_task')
@@ -75,7 +77,7 @@ def run_analysis_task(self,
         task = AnalysisTask.objects.get(uuid=task_id)
     except AnalysisTask.DoesNotExist:
         logger.error(f"Task with id {task_id} does not exist.")
-        return
+        return False
 
     task.start()
     try:
@@ -98,6 +100,8 @@ def run_analysis_task(self,
         task.add_log(str(e), logging.ERROR)
         task.failed()
         self.update_state(state="FAILURE")
+        return False
     else:
         task.complete()
         self.update_state(state="SUCCESS")
+        return True

@@ -1,8 +1,10 @@
 import json
+import logging
 import os
 import calendar
 import geopandas as gpd
 from shapely.geometry import box
+from copy import deepcopy
 
 from datetime import date, timedelta
 from celery.utils.log import get_task_logger
@@ -19,6 +21,7 @@ from project.models.monitor import (
     MonitoringIndicatorType,
     Status
 )
+from project.models.logs import TaskLog
 from project.tasks.analysis import run_analysis
 from project.utils.helper import get_admin_user
 
@@ -28,37 +31,22 @@ logger = get_task_logger(__name__)
 User = get_user_model()
 
 
-@app.task(name="process_water_body")
-def process_water_body(start_date, end_date, bbox, crawler_progress_id, waterbody_uid):
+@app.task(
+    name="process_water_body",
+    bind=True,
+    acks_late=True,
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3, "countdown": 60},
+)
+def process_water_body(self, parameters, task_id, crawler_progress_id):    
     crawler_progress = CrawlProgress.objects.get(id=crawler_progress_id)
-    crawler = crawler_progress.crawler
+    task = AnalysisTask.objects.get(uuid=task_id)
 
-    parameters = {
-        "start_date": start_date.strftime("%Y-%m-%d"),
-        "end_date": end_date.strftime("%Y-%m-%d"),
-        "bbox": bbox,
-        "resolution": crawler.resolution,
-        "export_plot": False,
-        "export_nc": False,
-        "export_cog": True,
-        "calc_types": ["AWEI"],
-        "auto_detect_water": True,
-        "image_type": crawler.image_type,
-    }
-    month = '{:02d}'.format(start_date.month)
-    year = start_date.year
-    task, _ = AnalysisTask.objects.get_or_create(
-        parameters=parameters,
-        defaults={
-            'task_name': f"Periodic Update {crawler.name} {waterbody_uid} {year}-{month}",
-            'created_by': get_admin_user()
-        }
-    )
-    if task.status == Status.COMPLETED:
-        return
-    parameters.update({"task_id": task.uuid.hex})
     # Extract water body
-    run_analysis(**parameters)
+    success = run_analysis(**parameters)
+    if not success:
+        self.update_state(state="FAILURE")
+        return
 
     # Once done, loop all water body belonging to this task,
     # then calculate NDCI and NDT
@@ -75,11 +63,28 @@ def process_water_body(start_date, end_date, bbox, crawler_progress_id, waterbod
             "bbox": output.bbox.extent,
             "mask_path": output.file.path,
         })
-        run_analysis(**parameters)
+        success = run_analysis(**parameters)
+        
+        if not success:
+            self.update_state(state="FAILURE")
+            return
+
+    TaskLog.objects.create(
+        content_object=crawler_progress,
+        log="Water body {} processed".format(task.uuid.hex),
+        level=logging.INFO,
+    )
+
     crawler_progress.increment_processed_data()
 
 
-@app.task(name="process_catchment")
+@app.task(
+    name="process_catchment",
+    bind=True,
+    acks_late=True,
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3, "countdown": 60},
+)
 def process_catchment(start_date, end_date, geom, crawler_progress, gdf_waterbodies):
     for idx, row in gdf_waterbodies.iterrows():
         process_water_body.delay(
@@ -109,20 +114,86 @@ def process_crawler(start_date, end_date, crawler_id):
     crawler_progress = CrawlProgress.objects.create(
         crawler=crawler,
         status=Status.RUNNING,
-        data_to_process=len(gdf_waterbodies),
         started_at=timezone.now(),
     )
+
     for idx, row in gdf_waterbodies.iterrows():
-        process_water_body.delay(
-            start_date,
-            end_date,
-            row.geometry.bounds,
-            crawler_progress.id,
-            row.uid
+        parameters = {
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
+            "bbox": row.geometry.bounds,
+            "resolution": crawler.resolution,
+            "export_plot": False,
+            "export_nc": False,
+            "export_cog": True,
+            "calc_types": ["AWEI"],
+            "auto_detect_water": True,
+            "image_type": crawler.image_type,
+        }
+        month = '{:02d}'.format(start_date.month)
+        year = start_date.year
+        task, created = AnalysisTask.objects.get_or_create(
+            parameters=parameters,
+            defaults={
+                'task_name': f"Periodic Update {crawler.name} {row.uid} {year}-{month}",
+                'created_by': get_admin_user()
+            }
         )
 
 
-@app.task(name="update_stored_data")
+        log_msg = "Crawl Progess {} | Created Analysis Task {}".format(
+            crawler_progress.id,
+            task.uuid.hex
+        )
+        skip_task = False
+        if not created:
+            log_msg = "Crawl Progess {} | Use existing Analysis Task {}".format(
+                crawler_progress.id,
+                task.uuid.hex
+            )
+            if task.status == Status.COMPLETED:
+                log_msg = "Crawl Progess {} | Analysis Task {} is finished".format(
+                    crawler_progress.id,
+                    task.uuid.hex
+                )
+                skip_task = True
+            elif task.status == Status.RUNNING:
+                log_msg = "Crawl Progess {} | Analysis Task {} is running".format(
+                    crawler_progress.id,
+                    task.uuid.hex
+                )
+                skip_task = True
+                
+        TaskLog.objects.create(
+            content_object=crawler_progress,
+            log=log_msg,
+            level=logging.INFO,
+        )
+
+        if skip_task:
+            TaskLog.objects.create(
+                content_object=crawler_progress,
+                log="Skiping task",
+                level=logging.INFO,
+            )
+            return
+        
+        crawler_progress.data_to_process += 1
+        parameters.update({
+            "task_id": task.uuid.hex,
+        })        
+
+        result = process_water_body.delay(
+            parameters,
+            task.uuid.hex,
+            crawler_progress.id
+        )
+        task.celery_task_id = result.id
+        task.save()
+    crawler_progress.save()
+
+
+@app.task(name="update_stored_data",)
 def update_stored_data(crawler_ids=None):
     """
     Update stored data for all crawlers or a specific crawler.

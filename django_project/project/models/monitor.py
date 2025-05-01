@@ -127,7 +127,7 @@ class AnalysisTask(models.Model):
         self.save()
 
     def failed(self):
-        self.status = self.Status.FAILED
+        self.status = Status.FAILED
         self.completed_at = timezone.now()
         self.save()
 
