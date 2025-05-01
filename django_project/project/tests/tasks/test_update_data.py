@@ -1,3 +1,4 @@
+import uuid
 import os
 import datetime
 import pickle
@@ -16,10 +17,10 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from core.factories import UserFactory
 from core.settings.utils import absolute_path
-from project.models.monitor import AnalysisTask, TaskOutput, CrawlProgress
+from project.models.monitor import AnalysisTask, TaskOutput, CrawlProgress, Status
 from project.utils.calculations.analysis import Analysis
 from project.tests.factories.monitor import CrawlerFactory
-from project.tasks.store_data import update_stored_data
+from project.tasks.store_data import update_stored_data, process_crawler
 
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
@@ -72,13 +73,47 @@ class TestUpdateData(APITestCase):
         ].sort_values(by="area_m2", ascending=False)
         return filtered
 
+    @override_settings(
+        CELERY_TASK_ALWAYS_EAGER=True,
+        CELERY_TASK_EAGER_PROPAGATES=True,
+        CELERY_TASK_STORE_EAGER_RESULT=True
+    )
     @patch("project.tasks.store_data.process_water_body.delay")
     def test_process_water_body_call_count(self, mock_process_water_body):
         """Test that process_water_body is called as the amount of waterbody"""
-        update_stored_data()
+        def side_effect(*args, **kwargs):
+            mock_result = MagicMock()
+            mock_result.id = uuid.uuid4()
+            return mock_result
+        mock_process_water_body.side_effect = side_effect
+        process_crawler(
+            datetime.date(2025, 4, 1),
+            datetime.date(2025, 4, 30),
+            self.crawler.id
+        )
 
         # check that process_water_body.delay is called 3671 times
         self.assertEqual(mock_process_water_body.call_count, 3671)
+        self.assertEqual(AnalysisTask.objects.all().count(), 3671)
+        crawl_progress = CrawlProgress.objects.first()
+        print(crawl_progress.id)
+        self.assertEqual(crawl_progress.data_to_process, 3671)
+        self.assertEqual(crawl_progress.status, Status.RUNNING)
+        
+        # Rerun same crawler
+        process_crawler(
+            datetime.date(2025, 4, 1),
+            datetime.date(2025, 4, 30),
+            self.crawler.id
+        )
+        
+        # check that process_water_body.delay is called 3671 times
+        # meaning, the it did not create new AnalysisTask 
+        # and call process_water_body
+        self.assertEqual(AnalysisTask.objects.all().count(), 3671)
+        self.assertEqual(mock_process_water_body.call_count, 3671)
+        crawl_progress = CrawlProgress.objects.first()
+        self.assertEqual(crawl_progress.data_to_process, 0)
 
     @patch("project.utils.calculations.analysis.Client")
     @patch("project.utils.calculations.analysis.stac_load")

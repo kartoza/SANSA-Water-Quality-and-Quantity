@@ -41,6 +41,10 @@ User = get_user_model()
 def process_water_body(self, parameters, task_id, crawler_progress_id):    
     crawler_progress = CrawlProgress.objects.get(id=crawler_progress_id)
     task = AnalysisTask.objects.get(uuid=task_id)
+    if task.status == Status.COMPLETED:
+        self.update_state(state="SUCCESS")
+        crawler_progress.increment_processed_data()
+
 
     # Extract water body
     success = run_analysis(**parameters)
@@ -58,6 +62,7 @@ def process_water_body(self, parameters, task_id, crawler_progress_id):
         task=task,
         monitoring_type__name=MonitoringIndicatorType.Type.AWEI
     )
+    success = True
     for output in outputs:
         parameters.update({
             "bbox": output.bbox.extent,
@@ -66,14 +71,9 @@ def process_water_body(self, parameters, task_id, crawler_progress_id):
         success = run_analysis(**parameters)
         
         if not success:
-            self.update_state(state="FAILURE")
-            return
-
-    TaskLog.objects.create(
-        content_object=crawler_progress,
-        log="Water body {} processed".format(task.uuid.hex),
-        level=logging.INFO,
-    )
+            success &= False
+    if not success:
+        self.update_state(state="FAILURE")
 
     crawler_progress.increment_processed_data()
 
@@ -140,7 +140,6 @@ def process_crawler(start_date, end_date, crawler_id):
             }
         )
 
-
         log_msg = "Crawl Progess {} | Created Analysis Task {}".format(
             crawler_progress.id,
             task.uuid.hex
@@ -151,6 +150,7 @@ def process_crawler(start_date, end_date, crawler_id):
                 crawler_progress.id,
                 task.uuid.hex
             )
+            skip_task = True
             if task.status == Status.COMPLETED:
                 log_msg = "Crawl Progess {} | Analysis Task {} is finished".format(
                     crawler_progress.id,
@@ -162,13 +162,13 @@ def process_crawler(start_date, end_date, crawler_id):
                     crawler_progress.id,
                     task.uuid.hex
                 )
-                skip_task = True
                 
         TaskLog.objects.create(
             content_object=crawler_progress,
             log=log_msg,
             level=logging.INFO,
         )
+        print(skip_task)
 
         if skip_task:
             TaskLog.objects.create(
@@ -179,18 +179,18 @@ def process_crawler(start_date, end_date, crawler_id):
             return
         
         crawler_progress.data_to_process += 1
-        parameters.update({
+        crawler_progress.save()
+        new_params = deepcopy(parameters)
+        new_params.update({
             "task_id": task.uuid.hex,
         })        
-
         result = process_water_body.delay(
-            parameters,
+            new_params,
             task.uuid.hex,
             crawler_progress.id
         )
         task.celery_task_id = result.id
         task.save()
-    crawler_progress.save()
 
 
 @app.task(name="update_stored_data",)
