@@ -96,7 +96,6 @@ class TestUpdateData(APITestCase):
         self.assertEqual(mock_process_water_body.call_count, 3671)
         self.assertEqual(AnalysisTask.objects.all().count(), 3671)
         crawl_progress = CrawlProgress.objects.first()
-        print(crawl_progress.id)
         self.assertEqual(crawl_progress.data_to_process, 3671)
         self.assertEqual(crawl_progress.status, Status.RUNNING)
         

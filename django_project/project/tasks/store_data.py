@@ -38,13 +38,12 @@ User = get_user_model()
     autoretry_for=(Exception,),
     retry_kwargs={"max_retries": 3, "countdown": 60},
 )
-def process_water_body(self, parameters, task_id, crawler_progress_id):    
+def process_water_body(self, parameters, task_id, crawler_progress_id):
     crawler_progress = CrawlProgress.objects.get(id=crawler_progress_id)
     task = AnalysisTask.objects.get(uuid=task_id)
     if task.status == Status.COMPLETED:
         self.update_state(state="SUCCESS")
         crawler_progress.increment_processed_data()
-
 
     # Extract water body
     success = run_analysis(**parameters)
@@ -69,7 +68,7 @@ def process_water_body(self, parameters, task_id, crawler_progress_id):
             "mask_path": output.file.path,
         })
         success = run_analysis(**parameters)
-        
+
         if not success:
             success &= False
     if not success:
@@ -162,13 +161,12 @@ def process_crawler(start_date, end_date, crawler_id):
                     crawler_progress.id,
                     task.uuid.hex
                 )
-                
+
         TaskLog.objects.create(
             content_object=crawler_progress,
             log=log_msg,
             level=logging.INFO,
         )
-        print(skip_task)
 
         if skip_task:
             TaskLog.objects.create(
@@ -177,13 +175,13 @@ def process_crawler(start_date, end_date, crawler_id):
                 level=logging.INFO,
             )
             return
-        
+
         crawler_progress.data_to_process += 1
         crawler_progress.save()
         new_params = deepcopy(parameters)
         new_params.update({
             "task_id": task.uuid.hex,
-        })        
+        })
         result = process_water_body.delay(
             new_params,
             task.uuid.hex,
