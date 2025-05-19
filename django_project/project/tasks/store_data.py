@@ -41,9 +41,9 @@ User = get_user_model()
 def process_water_body(self, parameters, task_id, crawler_progress_id):
     crawler_progress = CrawlProgress.objects.get(id=crawler_progress_id)
     task = AnalysisTask.objects.get(uuid=task_id)
+    crawler_progress.increment_processed_data()
     if task.status == Status.COMPLETED:
         self.update_state(state="SUCCESS")
-        crawler_progress.increment_processed_data()
 
     # Extract water body
     success = run_analysis(**parameters)
@@ -61,7 +61,7 @@ def process_water_body(self, parameters, task_id, crawler_progress_id):
         task=task,
         monitoring_type__name=MonitoringIndicatorType.Type.AWEI
     )
-    success = True
+    all_success = True
     for output in outputs:
         parameters.update({
             "bbox": output.bbox.extent,
@@ -70,11 +70,10 @@ def process_water_body(self, parameters, task_id, crawler_progress_id):
         success = run_analysis(**parameters)
 
         if not success:
-            success &= False
-    if not success:
-        self.update_state(state="FAILURE")
+            all_success &= False
 
-    crawler_progress.increment_processed_data()
+    if not all_success:
+        self.update_state(state="FAILURE")
 
 
 @app.task(
