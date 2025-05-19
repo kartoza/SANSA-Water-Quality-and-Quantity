@@ -46,11 +46,11 @@ class WaterAnalysisAPIViewTest(APITestCase):
 
         payload = {
             "start_date":
-            "2024-01-01",
+            "2025-03-01",
             "end_date":
-            "2024-01-31",
+            "2025-03-31",
             "bbox":
-            [19.0718146707764333, -34.1046576825389707, 19.3240754498619083, -33.9548456688371942],
+            [19.0231, -33.9494, 19.0834, -33.9039],
             "calc_types": ["AWEI", "NDCI"],
             "export_cog": True,
             "export_plot": True,
@@ -72,7 +72,7 @@ class WaterAnalysisAPIViewTest(APITestCase):
         response = self.setup_data(mock_stac_load, mock_client)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        task_id = response.data["message"]["task_uuid"]
+        task_id = response.data["task_uuid"]
         
         url = reverse("analysis-task-status", kwargs={"task_uuid": task_id})
         response = self.client.get(url)
@@ -83,18 +83,13 @@ class WaterAnalysisAPIViewTest(APITestCase):
         self.assertEqual(
             response.data["parameters"],
             {
-                "bbox": [
-                    19.071814670776433,
-                    -34.10465768253897,
-                    19.32407544986191,
-                    -33.954845668837194,
-                ],
-                "end_date": "2024-01-31",
+                "bbox": [19.0231, -33.9494, 19.0834, -33.9039],
+                "end_date": "2025-03-31",
                 "export_nc": True,
                 "calc_types": ["AWEI", "NDCI"],
                 "export_cog": True,
                 "resolution": 20,
-                "start_date": "2024-01-01",
+                "start_date": "2025-03-01",
                 "export_plot": True,
                 "auto_detect_water": True,
                 "mask_path": None,
@@ -135,11 +130,18 @@ class WaterAnalysisAPIViewTest(APITestCase):
         # Mock stac_load to return dummy xarray.Dataset with necessary bands
         response = self.setup_data(mock_stac_load, mock_client)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        task_id = response.data["message"]["task_uuid"]
+        task_id = response.data["task_uuid"]
+        self.assertIsNotNone(task_id)
         
         # After running analysis, 1 AnalysisTask should be created
         self.assertEqual(AnalysisTask.objects.count(), 1)
         
         # After running analysis with same parameter, new AnalysisTask should NOT be created
-        self.setup_data(mock_stac_load, mock_client)
+        response = self.setup_data(mock_stac_load, mock_client)
         self.assertEqual(AnalysisTask.objects.count(), 1)
+        self.assertEqual(response.data['status'], 'ready')
+        self.assertEqual(
+            response.data['output_url'], 
+            'http://testserver/api/task-outputs/?monitoring_type__name__in=AWEI%2CNDCI&from_date=2025-03-01&to_date=2025-03-31&bbox=19.0231%2C-33.9494%2C19.0834%2C-33.9039'
+        )
+        self.assertIsNone(response.data['task_uuid'])
