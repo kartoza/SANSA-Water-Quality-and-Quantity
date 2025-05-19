@@ -87,7 +87,7 @@ class WaterAnalysisAPIView(APIView):
         )
         output_url = request.build_absolute_uri(reverse('task-output-list'))
         query_params = {
-            'monitoring_type__name__in': ','.join(calc_types), 
+            'monitoring_type__name__in': ','.join(calc_types),
             'from_date': start_date,
             'to_date': end_date,
             'bbox': ','.join([str(coord) for coord in bbox]),

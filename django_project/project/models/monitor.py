@@ -329,7 +329,6 @@ class CrawlProgress(models.Model):
         # Save the updated progress
         self.save()
 
-
     def save(self, *args, **kwargs):
         if self.data_to_process > 0:
             self.progress = round(
