@@ -1,5 +1,8 @@
 import json
+from urllib.parse import urlencode
 from django.shortcuts import get_object_or_404
+from django.contrib.gis.geos import Polygon
+from django.urls import reverse
 from rest_framework.views import APIView
 from rest_framework.authentication import (
     TokenAuthentication,
@@ -75,6 +78,28 @@ class WaterAnalysisAPIView(APIView):
         }
         normalized_parameters = json.loads(json.dumps(parameters, sort_keys=True))
 
+        # Check for existing TaskOutput
+        existing_outputs = TaskOutput.objects.filter(
+            monitoring_type__name__in=calc_types,
+            bbox__intersects=Polygon.from_bbox(bbox),
+            observation_date__gte=start_date,
+            observation_date__lte=end_date,
+        )
+        output_url = request.build_absolute_uri(reverse('task-output-list'))
+        query_params = {
+            'monitoring_type__name__in': ','.join(calc_types), 
+            'from_date': start_date,
+            'to_date': end_date,
+            'bbox': ','.join([str(coord) for coord in bbox]),
+        }
+        absolute_url = f"{output_url}?{urlencode(query_params)}"
+        if existing_outputs.exists():
+            return Response({
+                "status": "ready",
+                "output_url": absolute_url,
+                "task_uuid": None
+            })
+
         task = AnalysisTask.objects.filter(
             parameters=normalized_parameters
         ).order_by('-created_at').first()
@@ -100,9 +125,11 @@ class WaterAnalysisAPIView(APIView):
             task.save()
 
             return Response(
-                {"message": {
+                {
+                    "status": "processing",
+                    "output_url": absolute_url,
                     "task_uuid": task.uuid
-                }},
+                },
                 status=status.HTTP_200_OK,
             )
 

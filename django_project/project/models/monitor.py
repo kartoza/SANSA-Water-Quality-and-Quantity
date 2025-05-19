@@ -317,7 +317,10 @@ class CrawlProgress(models.Model):
 
         # Recalculate progress
         if self.data_to_process > 0:
-            self.progress = int((self.processed_data / self.data_to_process) * 100)
+            self.progress = round(
+                (self.processed_data / self.data_to_process) * 100,
+                2
+            )
 
         if self.progress >= 100:
             self.status = Status.COMPLETED
@@ -326,9 +329,13 @@ class CrawlProgress(models.Model):
         # Save the updated progress
         self.save()
 
+
     def save(self, *args, **kwargs):
         if self.data_to_process > 0:
-            self.progress = int(self.processed_data / self.data_to_process) * 100
+            self.progress = round(
+                (self.processed_data / self.data_to_process) * 100,
+                2
+            )
             if self.progress >= 100:
                 self.status = Status.COMPLETED
                 self.completed_at = timezone.now()
