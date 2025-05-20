@@ -4,6 +4,7 @@ from .base import *  # noqa
 
 # Extra installed apps
 INSTALLED_APPS = INSTALLED_APPS + (
+    'corsheaders',
     'rest_framework',
     'rest_framework_gis',
     'rest_framework.authtoken',
@@ -49,3 +50,10 @@ CONSTANCE_CONFIG = {
     'AWEI_THRESHOLD': (-0.11, 'AWEI threshold value for detecting water body', float),
     'WATER_BODY_MIN_PIXEL': (100, 'Minimum pixels to consider as water body', int),
 }
+
+
+# Allow your React frontend
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:4200",
+]
+CORS_ALLOW_CREDENTIALS = True

@@ -145,12 +145,21 @@ class AnalysisTaskStatusAPIView(APIView):
     """
     API View to check the status of a Celery task.
     """
+    authentication_classes = [
+        TokenAuthentication,
+        BasicAuthentication,
+        SessionAuthentication,
+    ]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, task_uuid):
+        detail = request.GET.get('detail', 'false').lower() in ['true', '1']
         task = get_object_or_404(AnalysisTask, uuid=task_uuid)
         result = AsyncResult(task.celery_task_id)
-        serializer = AnalysisTaskStatusSerializer(task, context={'request': request})
-
-        response = serializer.data
-        response['status'] = result.status
+        if detail:
+            serializer = AnalysisTaskStatusSerializer(task, context={'request': request})
+            response = serializer.data
+            response['status'] = result.status
+        else:
+            response = {'status': result.status}
         return Response(response, status=status.HTTP_200_OK)

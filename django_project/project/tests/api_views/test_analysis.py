@@ -75,7 +75,7 @@ class WaterAnalysisAPIViewTest(APITestCase):
         task_id = response.data["task_uuid"]
         
         url = reverse("analysis-task-status", kwargs={"task_uuid": task_id})
-        response = self.client.get(url)
+        response = self.client.get(f"{url}?detail=true")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["task_name"], f"Water Analysis {self.user.username}")
         self.assertEqual(response.data["uuid"], str(task_id))
