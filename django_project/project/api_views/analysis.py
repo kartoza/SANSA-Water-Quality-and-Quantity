@@ -145,6 +145,12 @@ class AnalysisTaskStatusAPIView(APIView):
     """
     API View to check the status of a Celery task.
     """
+    authentication_classes = [
+        TokenAuthentication,
+        BasicAuthentication,
+        SessionAuthentication,
+    ]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, task_uuid):
         detail = request.GET.get('detail', 'false').lower() in ['true', '1']
