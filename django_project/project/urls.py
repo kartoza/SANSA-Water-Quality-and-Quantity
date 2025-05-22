@@ -23,5 +23,9 @@ urlpatterns = [
     ),
     path("awei-water-extent/", AWEIWaterExtentView.as_view(), name="awei-water-extent"),
     path("task-outputs/", TaskOutputViewSet.as_view({'get': 'list'}), name="task-output-list"),
-    path("analysis-tasks/", AnalysisTaskListAPIView.as_view({'get': 'list'}), name="analysis-tasks-list"),
+    path(
+        "analysis-tasks/",
+        AnalysisTaskListAPIView.as_view({'get': 'list'}),
+        name="analysis-tasks-list"
+    ),
 ]

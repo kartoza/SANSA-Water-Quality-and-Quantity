@@ -20,7 +20,6 @@ class TaskOutputViewSet(viewsets.ReadOnlyModelViewSet):
     ]
     permission_classes = [permissions.IsAuthenticated]
 
-
     queryset = TaskOutput.objects.all().order_by('-created_at')
     serializer_class = TaskOutputSerializer
     pagination_class = BasePaginationClass
