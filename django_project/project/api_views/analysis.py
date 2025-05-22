@@ -3,6 +3,8 @@ from urllib.parse import urlencode
 from django.shortcuts import get_object_or_404
 from django.contrib.gis.geos import Polygon
 from django.urls import reverse
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.authentication import (
     TokenAuthentication,
@@ -18,6 +20,7 @@ from project.utils.calculations.analysis import Analysis
 from project.models.monitor import MonitoringIndicatorType, AnalysisTask, TaskOutput
 from project.tasks.analysis import run_analysis_task, run_analysis
 from project.serializers.monitoring import AnalysisTaskStatusSerializer
+from project.api_views.base import BasePaginationClass
 
 
 class WaterAnalysisAPIView(APIView):
@@ -163,3 +166,25 @@ class AnalysisTaskStatusAPIView(APIView):
         else:
             response = {'status': result.status}
         return Response(response, status=status.HTTP_200_OK)
+
+
+class AnalysisTaskListAPIView(viewsets.ReadOnlyModelViewSet):
+    """
+    API View list AnalysisTask.
+    """
+    authentication_classes = [
+        TokenAuthentication,
+        BasicAuthentication,
+        SessionAuthentication,
+    ]
+    permission_classes = [permissions.IsAuthenticated]
+
+    serializer_class = AnalysisTaskStatusSerializer
+    pagination_class = BasePaginationClass
+    filter_backends = [DjangoFilterBackend]
+
+    def get_queryset(self):
+        queryset = AnalysisTask.objects.all()
+        if not self.request.user.is_superuser:
+            return AnalysisTask.objects.filter(created_by=self.request.user)
+        return queryset

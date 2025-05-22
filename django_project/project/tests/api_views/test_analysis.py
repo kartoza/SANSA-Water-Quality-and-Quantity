@@ -145,3 +145,85 @@ class WaterAnalysisAPIViewTest(APITestCase):
             'http://testserver/api/task-outputs/?monitoring_type__name__in=AWEI%2CNDCI&from_date=2025-03-01&to_date=2025-03-31&bbox=19.0231%2C-33.9494%2C19.0834%2C-33.9039'
         )
         self.assertIsNone(response.data['task_uuid'])
+
+
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+class AnalysisTaskListTest(APITestCase):
+    """
+    Test suite for AnalysisTaskListAPIView.
+    """
+    fixtures = ["monitoring_indicator_type.json"]
+
+    def setUp(self):
+        self.client = APIClient()
+        # Create admin user
+        self.admin_user = UserFactory(
+            username="admin",
+            is_superuser=True,
+            is_staff=True,
+        )
+        # Create non-admin user
+        self.non_admin_user = UserFactory(
+            username="user1",
+            is_superuser=False,
+            is_staff=False,
+        )
+        # Create AnalysisTask for admin
+        self.admin_task = AnalysisTask.objects.create(
+            uuid=uuid_lib.uuid4(),
+            created_by=self.admin_user,
+            task_name=f"Water Analysis {self.admin_user.username}",
+            parameters={
+                "start_date": "2025-03-01",
+                "end_date": "2025-03-31",
+                "bbox": [19.0231, -33.9494, 19.0834, -33.9039],
+                "calc_types": ["AWEI"],
+                "export_cog": True,
+                "export_plot": True,
+                "export_nc": True,
+            },
+            status="SUCCESS"
+        )
+        # Create AnalysisTask for non-admin
+        self.user_task = AnalysisTask.objects.create(
+            uuid=uuid_lib.uuid4(),
+            created_by=self.non_admin_user,
+            task_name=f"Water Analysis {self.non_admin_user.username}",
+            parameters={
+                "start_date": "2025-04-01",
+                "end_date": "2025-04-30",
+                "bbox": [19.0231, -33.9494, 19.0834, -33.9039],
+                "calc_types": ["NDCI"],
+                "export_cog": True,
+                "export_plot": True,
+                "export_nc": True,
+            },
+            status="SUCCESS"
+        )
+
+    def test_admin_sees_all_tasks(self):
+        """
+        Admin should see all AnalysisTask objects.
+        """
+        self.client.force_authenticate(user=self.admin_user)
+        url = reverse("analysis-tasks-list")
+        response = self.client.get(url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should see both tasks
+        uuids = [result["uuid"] for result in response.data["results"]]
+        self.assertIn(str(self.admin_task.uuid), uuids)
+        self.assertIn(str(self.user_task.uuid), uuids)
+        self.assertEqual(len(uuids), 2)
+
+    def test_non_admin_sees_only_own_tasks(self):
+        """
+        Non-admin should only see their own AnalysisTask objects.
+        """
+        self.client.force_authenticate(user=self.non_admin_user)
+        url = reverse("analysis-tasks-list")
+        response = self.client.get(url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        uuids = [result["uuid"] for result in response.data["results"]]
+        self.assertIn(str(self.user_task.uuid), uuids)
+        self.assertNotIn(str(self.admin_task.uuid), uuids)
+        self.assertEqual(len(uuids), 1)
