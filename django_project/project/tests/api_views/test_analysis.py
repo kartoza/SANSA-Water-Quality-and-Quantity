@@ -11,8 +11,8 @@ from django.conf import settings
 from django.test import override_settings
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from core.factories import UserFactory  # Assuming this is your factory import
-from project.models.monitor import AnalysisTask
+from core.factories import UserFactory
+from project.models.monitor import AnalysisTask, Status
 from project.utils.calculations.analysis import Analysis
 
 
@@ -79,7 +79,7 @@ class WaterAnalysisAPIViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["task_name"], f"Water Analysis {self.user.username}")
         self.assertEqual(response.data["uuid"], str(task_id))
-        self.assertEqual(response.data["status"], "SUCCESS")
+        self.assertEqual(response.data["status"], Status.COMPLETED)
         self.assertEqual(
             response.data["parameters"],
             {
