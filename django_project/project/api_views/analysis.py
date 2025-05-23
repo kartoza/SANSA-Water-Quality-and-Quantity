@@ -159,8 +159,8 @@ class AnalysisTaskStatusAPIView(APIView):
     def get(self, request, task_uuid):
         detail = request.GET.get('detail', 'false').lower() in ['true', '1']
         task = get_object_or_404(AnalysisTask, uuid=task_uuid)
+        serializer = AnalysisTaskStatusSerializer(task, context={'request': request})
         if detail:
-            serializer = AnalysisTaskStatusSerializer(task, context={'request': request})
             response = serializer.data
         else:
             response = {'status': serializer.data['status']}
