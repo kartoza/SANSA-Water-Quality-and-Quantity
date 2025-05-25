@@ -83,7 +83,7 @@ class AWEIApiTestCase(APITestCase):
     @patch("project.utils.calculations.analysis.Client")
     @patch("project.utils.calculations.analysis.stac_load")
     @patch("project.api_views.water_extent.AsyncResult")
-    def test_aaaaa(self, mock_async_result, mock_stac_load, mock_client):
+    def test_trigger_water_extent(self, mock_async_result, mock_stac_load, mock_client):
         """Test if the water extent task is triggered successfully."""
         # Mock stac_load to return dummy xarray.Dataset with necessary bands
         mock_async_result.return_value.status = "SUCCESS"
