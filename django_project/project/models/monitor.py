@@ -14,7 +14,6 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-
 class Status(models.TextChoices):
     PENDING = 'pending', _('Pending')
     RUNNING = 'running', _('Running')

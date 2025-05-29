@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import geopandas as gpd
 from rasterio.crs import CRS
 from constance import config
-from pyproj import CRS
 from rasterio.features import shapes
 from shapely.geometry import shape
 from scipy.ndimage import label, binary_closing
@@ -130,41 +129,16 @@ class Analysis:
         """Export to Cloud Optimized GeoTIFF.
         """
         self.add_log(f"Saving COG: {cog_path}")
-        transform = month_data.rio.transform()
-        xres = transform.a       # pixel width (float)
-        yres = transform.e       # pixel height (float, usually negative)
-        yres = yres * -1 if yres < 0 else yres
-        with tempfile.NamedTemporaryFile(suffix=".tif", delete=True) as tmp_cog_file:
-            tmp_cog_file_path = tmp_cog_file.name
-            month_data.rio.to_raster(
-                tmp_cog_file_path,
-                driver="COG",
-                compress="DEFLATE",
-                predictor=2,
-                blocksize=512,
-                dtype="float32",
-                nodata=np.nan,
-                overview_resampling="nearest",
-            )
-            cmd = [
-                "gdal_translate",
-                "-of", "COG",
-                "-co", "COMPRESS=DEFLATE",
-                "-co", "PREDICTOR=2",
-                "-co", "BLOCKSIZE=512",
-                "-co", "OVERVIEWS=IGNORE_EXISTING",
-                "-tr", str(xres), str(yres),
-                tmp_cog_file_path,
-                cog_path,
-            ]
-            
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            if result.returncode != 0:
-                print("Error running gdal_translate:")
-                print(result.stderr)
-            else:
-                print("gdal_translate finished successfully.")
-                print(result.stdout)
+        month_data.rio.to_raster(
+            cog_path,
+            driver="COG",
+            compress="DEFLATE",
+            predictor=2,
+            blocksize=512,
+            dtype="float32",
+            nodata=np.nan,
+            overview_resampling="nearest",
+        )
 
     def run_export_nc(self, month_data, nc_path):
         """Export to NetCDF.

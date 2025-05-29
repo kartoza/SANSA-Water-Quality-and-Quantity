@@ -25,7 +25,6 @@ from project.models.monitor import (
 from project.models.logs import TaskLog
 from project.tasks.analysis import run_analysis
 from project.utils.helper import get_admin_user
-from project.models.monitor import AnalysisTask, TaskOutput, Crawler
 
 
 logger = get_task_logger(__name__)
@@ -33,12 +32,11 @@ logger = get_task_logger(__name__)
 User = get_user_model()
 
 
-
 def generate_mosaic(crawler: Crawler):
     """
     Generate mosaic for current crawler.
     """
-    # check periodic update task this month, 
+    # check periodic update task this month,
     # make sure nothing is pending or running
     now = timezone.now()
     tasks = AnalysisTask.objects.filter(
@@ -49,7 +47,7 @@ def generate_mosaic(crawler: Crawler):
     )
     if tasks.exists():
         return
-    logger.info(f'All Task finished.')
+    logger.info('All Task finished.')
     for monitoring_type in MonitoringIndicatorType.objects.all():
         logger.info(f'Generating mosaic for {monitoring_type.name}')
         # create mosaic for current month
@@ -70,7 +68,7 @@ def generate_mosaic(crawler: Crawler):
         )
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(
-            output_dir, 
+            output_dir,
             f'SA_{monitoring_type.name}_{year}-{month}.tif'
         )
 
@@ -140,9 +138,10 @@ def process_water_body(self, parameters, task_id, crawler_progress_id):
 
     if not all_success:
         self.update_state(state="FAILURE")
-    
+
     logger.info('Generate Mosaic')
     generate_mosaic(crawler_progress.crawler)
+
 
 @app.task(
     name="process_catchment",
