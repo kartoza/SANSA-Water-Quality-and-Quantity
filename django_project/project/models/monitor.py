@@ -1,6 +1,16 @@
 import logging
 import uuid
 
+import os
+import gc
+from typing import List, Optional, Generator
+from datetime import date
+import rasterio
+from rasterio.windows import Window
+from rasterio.enums import Resampling
+import numpy as np
+import logging
+
 from django.core.exceptions import ValidationError
 from django.contrib.gis.geos import Polygon
 from django.db.models import F
@@ -12,6 +22,8 @@ from django.utils.translation import gettext_lazy as _
 from project.models.dataset import Dataset
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 class Status(models.TextChoices):
@@ -177,6 +189,280 @@ class TaskOutput(models.Model):
     bbox = models.PolygonField(null=True, blank=True, srid=4326)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+
+        
+    @classmethod
+    def create_mosaic_streaming(
+        cls,
+        output_path: str,
+        monitoring_type: MonitoringIndicatorType,
+        memory_limit_mb: int = 1000,  # Maximum memory to use
+        tile_size: int = 512,  # Process in tiles
+        compress: str = 'lzw'
+    ) -> str:
+        """
+        Create mosaic using streaming approach for large files (500MB+).
+        
+        This method processes files in small tiles and never loads entire files into memory.
+        """
+        now = timezone.now()
+        queryset = TaskOutput.objects.filter(
+            created_at__month=now.month,
+            created_at__year=now.year,
+            monitoring_type=monitoring_type
+        )
+        
+        if not queryset.exists():
+            raise ValueError("No TaskOutput files found matching the criteria")
+        
+        logger.info(f"Creating streaming mosaic from {queryset.count()} files")
+        
+        file_paths = [task_output.file.path for task_output in queryset]
+
+        # Validate all files can be opened
+        valid_files = cls._validate_raster_files(file_paths)
+        if not valid_files:
+            raise ValueError("No valid raster files found")
+        
+        # Get bounds and resolution from all files
+        bounds, crs, dtype, nodata, pixel_size, band_count = cls._analyze_input_files(valid_files)
+        
+        logger.info(f"Mosaic bounds: {bounds}")
+        logger.info(f"Pixel size: {pixel_size}")
+        
+        # Calculate output dimensions
+        width = max(1, int(abs(bounds[2] - bounds[0]) / abs(pixel_size[0])))
+        height = max(1, int(abs(bounds[3] - bounds[1]) / abs(pixel_size[1])))
+        
+        logger.info(f"Output dimensions: {width}x{height} pixels")
+        
+        if width <= 0 or height <= 0:
+            raise ValueError(f"Invalid output dimensions: {width}x{height}. Check input file bounds and projections.")
+        
+        # Create output transform
+        transform = rasterio.transform.from_bounds(*bounds, width, height)
+        
+        # Create output profile
+        profile = {
+            'driver': 'GTiff',
+            'dtype': dtype,
+            'nodata': nodata,
+            'width': width,
+            'height': height,
+            'count': band_count,
+            'crs': crs,
+            'transform': transform,
+            'compress': compress,
+            'tiled': True,
+            'blockxsize': min(512, tile_size),
+            'blockysize': min(512, tile_size),
+        }
+        
+        # Add BIGTIFF if file will be large
+        estimated_size_mb = (width * height * band_count * np.dtype(dtype).itemsize) / (1024 * 1024)
+        if estimated_size_mb > 4000:  # 4GB threshold
+            profile['BIGTIFF'] = 'YES'
+        
+        logger.info(f"Estimated output size: {estimated_size_mb:.1f}MB")
+        
+        with rasterio.open(output_path, 'w', **profile) as dst:
+            # Process each band
+            for band_idx in range(1, band_count + 1):
+                logger.info(f"Processing band {band_idx}/{band_count}")
+                
+                # Process in tiles
+                for tile_window in cls._generate_tiles(width, height, tile_size):
+                    logger.debug(f"Processing tile: {tile_window}")
+                    
+                    # Get tile bounds in the output CRS
+                    tile_bounds = rasterio.windows.bounds(tile_window, transform)
+                    
+                    # Collect data from all input files for this tile
+                    tile_data = cls._process_tile(valid_files, tile_bounds, tile_window, 
+                                                crs, band_idx, dtype, nodata)
+                    
+                    if tile_data is not None:
+                        dst.write(tile_data, band_idx, window=tile_window)
+                    
+                    # Force garbage collection after each tile
+                    gc.collect()
+                    
+                    # Check memory usage
+                    memory_usage = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+                    if memory_usage > memory_limit_mb * 2:
+                        logger.warning(f"High memory usage: {memory_usage:.1f}MB")
+        
+        logger.info(f"Streaming mosaic created: {output_path}")
+        return output_path
+
+    @classmethod
+    def _validate_raster_files(cls, file_paths: List[str]) -> List[str]:
+        """Validate that files can be opened as rasters."""
+        valid_files = []
+        
+        for file_path in file_paths:
+            try:
+                with rasterio.open(file_path) as src:
+                    # Basic validation
+                    if src.width > 0 and src.height > 0 and src.count > 0:
+                        valid_files.append(file_path)
+                    else:
+                        logger.warning(f"Invalid raster dimensions in {file_path}")
+            except Exception as e:
+                logger.warning(f"Cannot open {file_path} as raster: {e}")
+                continue
+        
+        logger.info(f"Validated {len(valid_files)}/{len(file_paths)} raster files")
+        return valid_files
+
+    @classmethod
+    def _analyze_input_files(cls, file_paths: List[str]) -> tuple:
+        """Analyze input files to get common bounds, CRS, dtype, etc."""
+        if not file_paths:
+            raise ValueError("No valid input files provided")
+        
+        bounds_list = []
+        crs_list = []
+        dtype_list = []
+        nodata_list = []
+        pixel_sizes = []
+        band_counts = []
+        
+        for file_path in file_paths:
+            try:
+                with rasterio.open(file_path) as src:
+                    bounds_list.append(src.bounds)
+                    crs_list.append(src.crs)
+                    dtype_list.append(src.dtypes[0])
+                    nodata_list.append(src.nodata)
+                    band_counts.append(src.count)
+                    
+                    # Get pixel size (resolution)
+                    transform = src.transform
+                    pixel_sizes.append((abs(transform[0]), abs(transform[4])))
+                    
+                    logger.debug(f"File {file_path}: bounds={src.bounds}, "
+                               f"size={src.width}x{src.height}, crs={src.crs}")
+                    
+            except Exception as e:
+                logger.error(f"Error analyzing {file_path}: {e}")
+                continue
+        
+        if not bounds_list:
+            raise ValueError("No valid bounds found in input files")
+        
+        # Use the most common CRS
+        crs = max(set(crs_list), key=crs_list.count) if crs_list else None
+        
+        # Use the most common dtype
+        dtype = max(set(dtype_list), key=dtype_list.count) if dtype_list else 'float32'
+        
+        # Use the first non-None nodata value
+        nodata = next((nd for nd in nodata_list if nd is not None), None)
+        
+        # Use the finest resolution (smallest pixel size)
+        if pixel_sizes:
+            min_pixel_x = min(ps[0] for ps in pixel_sizes)
+            min_pixel_y = min(ps[1] for ps in pixel_sizes)
+            pixel_size = (min_pixel_x, min_pixel_y)
+        else:
+            pixel_size = (1.0, 1.0)  # Default fallback
+        
+        # Use maximum band count
+        band_count = max(band_counts) if band_counts else 1
+        
+        # Calculate union of all bounds (in the target CRS)
+        if crs:
+            # Transform all bounds to the target CRS if needed
+            transformed_bounds = []
+            for i, bounds in enumerate(bounds_list):
+                src_crs = crs_list[i]
+                if src_crs != crs:
+                    try:
+                        # Transform bounds to target CRS
+                        left, bottom, right, top = transform_bounds(src_crs, crs, *bounds)
+                        transformed_bounds.append((left, bottom, right, top))
+                    except Exception as e:
+                        logger.warning(f"Could not transform bounds from {src_crs} to {crs}: {e}")
+                        transformed_bounds.append(bounds)  # Use original bounds
+                else:
+                    transformed_bounds.append(bounds)
+            
+            bounds_list = transformed_bounds
+        
+        # Calculate union bounds
+        min_x = min(b[0] for b in bounds_list)
+        min_y = min(b[1] for b in bounds_list)
+        max_x = max(b[2] for b in bounds_list)
+        max_y = max(b[3] for b in bounds_list)
+        
+        union_bounds = (min_x, min_y, max_x, max_y)
+        
+        logger.info(f"Analysis complete - CRS: {crs}, Bounds: {union_bounds}, "
+                   f"Pixel size: {pixel_size}, Dtype: {dtype}, Bands: {band_count}")
+        
+        return union_bounds, crs, dtype, nodata, pixel_size, band_count
+
+    @classmethod
+    def _calculate_pixel_size(cls, file_paths: List[str]) -> float:
+        """Calculate common pixel size from input files."""
+        with rasterio.open(file_paths[0]) as src:
+            return abs(src.transform[0])  # Assuming square pixels
+
+    @classmethod
+    def _generate_tiles(cls, width: int, height: int, tile_size: int) -> Generator:
+        """Generate tile windows for processing."""
+        for row in range(0, height, tile_size):
+            for col in range(0, width, tile_size):
+                # Calculate actual tile size (handle edge tiles)
+                tile_width = min(tile_size, width - col)
+                tile_height = min(tile_size, height - row)
+                
+                window = Window(col, row, tile_width, tile_height)
+                transform = rasterio.windows.transform(window, 
+                    rasterio.transform.from_bounds(0, 0, width, height, width, height))
+                
+                yield window, transform
+
+    @classmethod
+    def _process_tile(cls, file_paths: List[str], tile_bounds: tuple, 
+                     tile_window: Window, tile_transform) -> Optional[np.ndarray]:
+        """Process a single tile by reading from all overlapping input files."""
+        tile_data = None
+        
+        for file_path in file_paths:
+            with rasterio.open(file_path) as src:
+                # Check if this file intersects with the tile
+                if not cls._bounds_intersect(src.bounds, tile_bounds):
+                    continue
+                
+                try:
+                    # Read data for this tile
+                    data = src.read(1, 
+                        window=rasterio.windows.from_bounds(*tile_bounds, src.transform),
+                        out_shape=(tile_window.height, tile_window.width),
+                        resampling=Resampling.nearest
+                    )
+                    
+                    if data is not None and not np.all(data == src.nodata):
+                        if tile_data is None:
+                            tile_data = data.copy()
+                        else:
+                            # Merge data (you can customize this logic)
+                            mask = (data != src.nodata) & (tile_data == src.nodata)
+                            tile_data[mask] = data[mask]
+                
+                except Exception as e:
+                    logger.warning(f"Error reading tile from {file_path}: {e}")
+                    continue
+        
+        return tile_data
+
+    @classmethod
+    def _bounds_intersect(cls, bounds1: tuple, bounds2: tuple) -> bool:
+        """Check if two bounding boxes intersect."""
+        return not (bounds1[2] < bounds2[0] or bounds1[0] > bounds2[2] or 
+                   bounds1[3] < bounds2[1] or bounds1[1] > bounds2[3])
 
 
 class Province(models.Model):

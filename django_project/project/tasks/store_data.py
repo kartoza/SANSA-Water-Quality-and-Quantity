@@ -1,4 +1,5 @@
 import json
+import tempfile
 import logging
 import os
 import calendar
@@ -10,6 +11,7 @@ from datetime import date, timedelta
 from celery.utils.log import get_task_logger
 from django.contrib.auth import get_user_model
 from core.celery import app
+from django.conf import settings
 from django.utils import timezone
 
 from core.settings.utils import absolute_path
@@ -24,11 +26,54 @@ from project.models.monitor import (
 from project.models.logs import TaskLog
 from project.tasks.analysis import run_analysis
 from project.utils.helper import get_admin_user
+from project.utils.rasters.mosaic import create_mosaic
+from project.models.monitor import AnalysisTask, TaskOutput, Crawler
 
 
 logger = get_task_logger(__name__)
 
 User = get_user_model()
+
+
+
+def generate_mosaic(crawler: Crawler):
+    """
+    Generate mosaic for current crawler.
+    """
+    # check periodic update task this month, 
+    # make sure nothing is pending or running
+    now = timezone.now()
+    tasks = AnalysisTask.objects.filter(
+        task_name__startswith=f'Periodic Update {crawler.name}',
+        completed_at__month=now.month,
+        completed_at__year=now.year,
+        status__in=[Status.PENDING, Status.RUNNING]
+    )
+    if tasks.exists():
+        return
+    for monitoring_type in MonitoringIndicatorType.objects.all():
+        output_path = os.path.join(
+            settings.MEDIA_ROOT,
+            f'SA_{monitoring_type.name}_{now.year}-{now.month}.tif'
+        )
+        # TaskOutput.create_mosaic_streaming(
+        #     output_path=output_path,
+        #     monitoring_type=monitoring_type
+        # )
+        # # create mosaic for current month
+        # rasters = TaskOutput.objects.filter(
+        #     created_at__month=now.month,
+        #     created_at__year=now.year,
+        #     monitoring_type=monitoring_type
+        # )
+        # raster_paths = [r.file.path for r in rasters if os.path.exists(r.file.path)]
+        # with tempfile.NamedTemporaryFile(suffix=".vrt", delete=False) as vrt_file:
+        #     vrt_path = vrt_file.name
+        #     create_mosaic(
+        #         vrt_path=vrt_path,
+        #         raster_paths=raster_paths,
+        #         output_path=output_path
+        #     )
 
 
 @app.task(
@@ -74,7 +119,8 @@ def process_water_body(self, parameters, task_id, crawler_progress_id):
 
     if not all_success:
         self.update_state(state="FAILURE")
-
+    
+    generate_mosaic(crawler_progress.crawler)
 
 @app.task(
     name="process_catchment",
