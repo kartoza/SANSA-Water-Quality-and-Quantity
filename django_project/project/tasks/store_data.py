@@ -1,13 +1,12 @@
-import json
-import tempfile
 import logging
 import os
 import calendar
 import geopandas as gpd
 from shapely.geometry import box
 from copy import deepcopy
+import subprocess
 
-from datetime import date, timedelta
+from datetime import date
 from celery.utils.log import get_task_logger
 from django.contrib.auth import get_user_model
 from core.celery import app
@@ -26,7 +25,6 @@ from project.models.monitor import (
 from project.models.logs import TaskLog
 from project.tasks.analysis import run_analysis
 from project.utils.helper import get_admin_user
-from project.utils.rasters.mosaic import create_mosaic
 from project.models.monitor import AnalysisTask, TaskOutput, Crawler
 
 
@@ -51,29 +49,50 @@ def generate_mosaic(crawler: Crawler):
     )
     if tasks.exists():
         return
+    logger.info(f'All Task finished.')
     for monitoring_type in MonitoringIndicatorType.objects.all():
-        output_path = os.path.join(
-            settings.MEDIA_ROOT,
-            f'SA_{monitoring_type.name}_{now.year}-{now.month}.tif'
+        logger.info(f'Generating mosaic for {monitoring_type.name}')
+        # create mosaic for current month
+        rasters = TaskOutput.objects.filter(
+            created_at__month=now.month,
+            created_at__year=now.year,
+            monitoring_type=monitoring_type
         )
-        # TaskOutput.create_mosaic_streaming(
-        #     output_path=output_path,
-        #     monitoring_type=monitoring_type
-        # )
-        # # create mosaic for current month
-        # rasters = TaskOutput.objects.filter(
-        #     created_at__month=now.month,
-        #     created_at__year=now.year,
-        #     monitoring_type=monitoring_type
-        # )
-        # raster_paths = [r.file.path for r in rasters if os.path.exists(r.file.path)]
-        # with tempfile.NamedTemporaryFile(suffix=".vrt", delete=False) as vrt_file:
-        #     vrt_path = vrt_file.name
-        #     create_mosaic(
-        #         vrt_path=vrt_path,
-        #         raster_paths=raster_paths,
-        #         output_path=output_path
-        #     )
+        raster_paths = [r.file.path for r in rasters if os.path.exists(r.file.path)]
+        if not raster_paths:
+            continue
+        raster_sample = rasters.first()
+        year = raster_sample.observation_date.year
+        month = raster_sample.observation_date.strftime('%m')
+        output_dir = os.path.join(
+            settings.MEDIA_ROOT,
+            f'mosaics/{monitoring_type.name}/{year}/{month}'
+        )
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(
+            output_dir, 
+            f'SA_{monitoring_type.name}_{year}-{month}.tif'
+        )
+
+        cmd = [
+            "gdal_merge.py",
+            "-o", output_path,
+            "-of", "GTiff",
+            "-n", "nan",
+            "-a_nodata", "nan",
+            "-co", "COMPRESS=DEFLATE",
+            "-co", "BIGTIFF=YES",
+            "-co", "TILED=YES",
+            *raster_paths  # Unpack list of raster files
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print("Error merging rasters:")
+            print(result.stderr)
+        else:
+            print("Raster merge successful.")
+            print(result.stdout)
 
 
 @app.task(
@@ -91,6 +110,7 @@ def process_water_body(self, parameters, task_id, crawler_progress_id):
         self.update_state(state="SUCCESS")
 
     # Extract water body
+    logger.info('Run AWEI')
     success = run_analysis(**parameters)
     if not success:
         self.update_state(state="FAILURE")
@@ -98,6 +118,7 @@ def process_water_body(self, parameters, task_id, crawler_progress_id):
 
     # Once done, loop all water body belonging to this task,
     # then calculate NDCI and NDT
+    logger.info('Run NDTI, NDCI')
     parameters.update({
         "calc_types": ["NDCI", "NDTI"],
     })
@@ -120,6 +141,7 @@ def process_water_body(self, parameters, task_id, crawler_progress_id):
     if not all_success:
         self.update_state(state="FAILURE")
     
+    logger.info('Generate Mosaic')
     generate_mosaic(crawler_progress.crawler)
 
 @app.task(
@@ -206,7 +228,6 @@ def process_crawler(start_date, end_date, crawler_id):
                     crawler_progress.id,
                     task.uuid.hex
                 )
-
         TaskLog.objects.create(
             content_object=crawler_progress,
             log=log_msg,
