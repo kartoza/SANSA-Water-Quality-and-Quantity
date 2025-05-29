@@ -1,4 +1,11 @@
+import os
+import mimetypes
+from django.http import StreamingHttpResponse, Http404
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_control
+from django.conf import settings
 from rest_framework import viewsets
+from rest_framework.views import APIView
 from rest_framework.authentication import (
     TokenAuthentication,
     BasicAuthentication,
@@ -25,3 +32,99 @@ class TaskOutputViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = BasePaginationClass
     filter_backends = [DjangoFilterBackend]
     filterset_class = TaskOutputFilter
+
+
+class RasterStreamAPIView(APIView):
+    """
+    Stream raster file content based on year and month parameters
+    """
+
+    authentication_classes = [
+        TokenAuthentication,
+        BasicAuthentication,
+        SessionAuthentication,
+    ]
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_raster_file_path(self, indicator_type, year, month):
+        """
+        Construct the file path for the raster file based on indicator 
+        type, year and month
+        """
+        filename = f"SA_{indicator_type}_{year}-{month:02d}.tif"
+        file_path = os.path.join(
+            settings.MEDIA_ROOT,
+            'mosaics',
+            indicator_type,
+            str(year),
+            f"{month:02d}",
+            filename
+        )
+        return file_path
+    
+    def file_iterator(self, file_path, chunk_size=8192):
+        """
+        Generator to read file in chunks for streaming
+        """
+        try:
+            with open(file_path, 'rb') as file:
+                while True:
+                    chunk = file.read(chunk_size)
+                    if not chunk:
+                        break
+                    yield chunk
+        except IOError:
+            raise Http404("Raster file not found")
+    
+    @method_decorator(cache_control(max_age=3600))  # Cache for 1 hour
+    def get(self, request, *args, **kwargs):
+        # Get year and month from URL parameters or query parameters
+        indicator_type = kwargs.get('indicator_type') or request.GET.get('indicator_type')
+        indicator_type = indicator_type.upper()
+        year = kwargs.get('year') or request.GET.get('year')
+        month = kwargs.get('month') or request.GET.get('month')
+        
+        # Validate parameters
+        if not year or not month:
+            raise Http404("Year and month parameters are required")
+        
+        try:
+            year = int(year)
+            month = int(month)
+            
+            # Validate ranges
+            if not (1900 <= year <= 2100):
+                raise ValueError("Invalid year")
+            if not (1 <= month <= 12):
+                raise ValueError("Invalid month")
+                
+        except (ValueError, TypeError):
+            raise Http404("Invalid year or month format")
+        
+        # Get file path
+        file_path = self.get_raster_file_path(indicator_type, year, month)
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            raise Http404(f"Raster file for {indicator_type} {year}-{month:02d} not found")
+        
+        # Determine content type
+        content_type, _ = mimetypes.guess_type(file_path)
+        if not content_type:
+            content_type = 'application/octet-stream'
+        
+        # Get file size for Content-Length header
+        file_size = os.path.getsize(file_path)
+        
+        # Create streaming response
+        response = StreamingHttpResponse(
+            self.file_iterator(file_path),
+            content_type=content_type
+        )
+        
+        # Set headers
+        response['Content-Length'] = str(file_size)
+        response['Content-Disposition'] = f'attachment; filename="SA_{indicator_type}_{year}-{month:02d}.tif"'
+        response['Accept-Ranges'] = 'bytes'
+        
+        return response
