@@ -57,6 +57,11 @@ logger = get_logger()
 
 User = get_user_model()
 
+# Configuration from environment variables
+MAX_THREADS = 4
+BATCH_SIZE = 500
+TARGET_CRS = 'EPSG:6933'
+
 # Thread-safe counter for progress tracking
 progress_lock = Lock()
 
@@ -67,7 +72,6 @@ def reproject_single_raster(args):
     Args: tuple of (input_path, output_path, batch_id, raster_index)
     """
     input_path, output_path, batch_id, raster_index = args
-    TARGET_CRS = config.MOSAIC_TARGET_CRS
 
     cmd = [
         "gdalwarp",
@@ -127,6 +131,7 @@ def reproject_batch(raster_paths, batch_id, temp_dir):
     Reproject a batch of rasters using threading.
     Returns list of successfully reprojected raster paths.
     """
+    global MAX_THREADS
     batch_temp_dir = os.path.join(temp_dir, f'batch_{batch_id}')
     os.makedirs(batch_temp_dir, exist_ok=True)
 
@@ -139,8 +144,6 @@ def reproject_batch(raster_paths, batch_id, temp_dir):
 
     successful_paths = []
     failed_count = 0
-
-    MAX_THREADS = int(config.MOSAIC_MAX_THREADS)
 
     logger.info(
         f"Batch {batch_id}: Starting reprojection of {len(raster_paths)} "
@@ -448,13 +451,18 @@ def generate_mosaic_batched(raster_paths, monitoring_type_name, final_output_pat
     """
     Generate mosaic using batched reprojection and merging.
     """
-    if not raster_paths:
-        logger.info(f"No rasters provided for {monitoring_type_name}")
-        return False
+    global MAX_THREADS
+    global BATCH_SIZE
+    global TARGET_CRS
 
     MAX_THREADS = int(config.MOSAIC_MAX_THREADS)
     BATCH_SIZE = int(config.MOSAIC_BATCH_SIZE)
     TARGET_CRS = config.MOSAIC_TARGET_CRS
+
+    if not raster_paths:
+        logger.info(f"No rasters provided for {monitoring_type_name}")
+        return False
+
     total_rasters = len(raster_paths)
     total_batches = (total_rasters + BATCH_SIZE - 1) // BATCH_SIZE  # Ceiling division
 
@@ -533,10 +541,11 @@ def generate_mosaic(crawler: Crawler):
     """
     # check periodic update task this month,
     # make sure nothing is pending or running
+    global MAX_THREADS
+    global BATCH_SIZE
+    global TARGET_CRS
+
     now = timezone.now()
-    MAX_THREADS = int(config.MOSAIC_MAX_THREADS)
-    BATCH_SIZE = int(config.MOSAIC_BATCH_SIZE)
-    TARGET_CRS = config.MOSAIC_TARGET_CRS
     tasks = AnalysisTask.objects.filter(
         task_name__startswith=f'Periodic Update {crawler.name}',
         completed_at__month=now.month,
