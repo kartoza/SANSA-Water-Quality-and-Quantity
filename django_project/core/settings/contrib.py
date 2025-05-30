@@ -49,6 +49,9 @@ CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 CONSTANCE_CONFIG = {
     'AWEI_THRESHOLD': (-0.11, 'AWEI threshold value for detecting water body', float),
     'WATER_BODY_MIN_PIXEL': (100, 'Minimum pixels to consider as water body', int),
+    'MOSAIC_MAX_THREADS': (4, 'Maximum threads for genrating mosaic', int),
+    'MOSAIC_BATCH_SIZE': (500, 'Batch size number for generating mosaic', int),
+    'MOSAIC_TARGET_CRS': ('EPSG:6933', 'Target CRS of the mosaic', str),
 }
 
 

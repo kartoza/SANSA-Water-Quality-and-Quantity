@@ -158,3 +158,18 @@ class TestUpdateData(APITestCase):
         self.assertEqual(crawler_progress.progress, 100)
         self.assertIsNotNone(crawler_progress.completed_at)
         self.assertEqual(crawler_progress.status, 'completed')
+
+        # check merged file exist
+        for indicator_type in ['AWEI', 'NDCI', 'NDTI']:
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(
+                        settings.MEDIA_ROOT,
+                        'mosaics',
+                        indicator_type,
+                        '2025',
+                        '03',
+                        f'SA_{indicator_type}_2025-03.tif'
+                    )
+                )
+            )
