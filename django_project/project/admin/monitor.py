@@ -13,7 +13,6 @@ from project.models.monitor import (
     CrawlProgress,
     Province
 )
-from project.tasks.store_data import update_stored_data
 
 
 @admin.register(MonitoringIndicatorType)
