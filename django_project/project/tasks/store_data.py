@@ -548,7 +548,7 @@ def generate_mosaic(crawler: Crawler):
         f"Batch size: {BATCH_SIZE}, Target CRS: {TARGET_CRS}"
     )
 
-    for monitoring_type in MonitoringIndicatorType.objects.filter(name='AWEI'):
+    for monitoring_type in MonitoringIndicatorType.objects.all():
         logger.info(f'Generating mosaic for {monitoring_type.name}')
 
         # create mosaic for current month
