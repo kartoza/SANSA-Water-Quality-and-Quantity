@@ -131,7 +131,7 @@ def reproject_batch(raster_paths, batch_id, temp_dir):
     Reproject a batch of rasters using threading.
     Returns list of successfully reprojected raster paths.
     """
-    global MAX_THREADS
+    global MAX_THREADS  # noqa
     batch_temp_dir = os.path.join(temp_dir, f'batch_{batch_id}')
     os.makedirs(batch_temp_dir, exist_ok=True)
 
@@ -541,9 +541,9 @@ def generate_mosaic(crawler: Crawler):
     """
     # check periodic update task this month,
     # make sure nothing is pending or running
-    global MAX_THREADS
-    global BATCH_SIZE
-    global TARGET_CRS
+    global MAX_THREADS  # noqa
+    global BATCH_SIZE  # noqa
+    global TARGET_CRS  # noqa
 
     now = timezone.now()
     tasks = AnalysisTask.objects.filter(
