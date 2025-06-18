@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.conf import settings
 from django.utils import timezone
 from django.test import override_settings
-from rest_framework.test import APITestCase, APIClient
+from rest_framework.test import APITestCase
 from rest_framework import status
 from core.factories import UserFactory
 from core.settings.utils import absolute_path
@@ -30,12 +30,10 @@ class TestUpdateData(APITestCase):
     fixtures = ["monitoring_indicator_type.json"]
 
     def setUp(self):
-        self.client = APIClient()
         self.user = UserFactory(
             username=os.getenv("ADMIN_USERNAME", "admin"),
         )
         self.crawler = CrawlerFactory()
-        self.client.force_authenticate(user=self.user)
 
     def setup_data(self, mock_stac_load, mock_client):
         """Setup dummy data for processing.
@@ -138,12 +136,14 @@ class TestUpdateData(APITestCase):
 
         outputs = TaskOutput.objects.all()
 
-        # 3 Outputs are created
-        self.assertEqual(outputs.count(), 3)
+        # 6 Outputs are created: 3 mosaic, 3 non mosaic
+        self.assertEqual(outputs.count(), 6)
+        self.assertEqual(outputs.filter(is_mosaic=True).count(), 3)
+        self.assertEqual(outputs.filter(is_mosaic=False).count(), 3)
 
         # Outputs should have AWEI, NDCI, and NDTI type
         self.assertEqual(
-            sorted(list(outputs.values_list('monitoring_type__name', flat=True))), 
+            sorted(list(set(outputs.values_list('monitoring_type__name', flat=True)))), 
             ['AWEI', 'NDCI', 'NDTI']
         )
 
@@ -161,15 +161,17 @@ class TestUpdateData(APITestCase):
 
         # check merged file exist
         for indicator_type in ['AWEI', 'NDCI', 'NDTI']:
-            self.assertTrue(
-                os.path.exists(
-                    os.path.join(
-                        settings.MEDIA_ROOT,
-                        'mosaics',
-                        indicator_type,
-                        '2025',
-                        '03',
-                        f'SA_{indicator_type}_2025-03.tif'
-                    )
-                )
+            task_output = TaskOutput.objects.filter(
+                monitoring_type__name=indicator_type,
+                is_mosaic=True
+            ).first()
+            expected_path = os.path.join(
+                settings.MEDIA_ROOT,
+                'mosaics',
+                indicator_type,
+                '2025',
+                '03',
+                f'SA_{indicator_type}_2025-03.tif'
             )
+            self.assertEqual(task_output.file.path, expected_path)
+            self.assertTrue(os.path.exists(expected_path))
