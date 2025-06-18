@@ -3,17 +3,17 @@ import uuid
 import os
 import re
 import rioxarray
-import xarray as xr
+import subprocess
+import tempfile
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import geopandas as gpd
+from rasterio.crs import CRS
 from constance import config
-from pyproj import CRS
 from rasterio.features import shapes
 from shapely.geometry import shape
 from scipy.ndimage import label, binary_closing
-from shapely.geometry import box
 from rasterio.warp import transform_bounds
 
 from celery.utils.log import get_task_logger
@@ -26,7 +26,6 @@ from project.models import MonitoringIndicatorType
 from project.models.monitor import TaskOutput
 from project.utils.calculations.water_extent import generate_water_mask_from_tif
 from collections import defaultdict
-from datetime import datetime
 
 logger = get_task_logger(__name__)
 

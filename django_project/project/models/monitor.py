@@ -1,17 +1,18 @@
 import logging
 import uuid
+import os
 
-from django.core.exceptions import ValidationError
-from django.contrib.gis.geos import Polygon
-from django.db.models import F
-from django.contrib.gis.db import models
-
-from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.contrib.gis.db import models
+from django.core.exceptions import ValidationError
+from django.db.models import F
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
 from project.models.dataset import Dataset
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class Status(models.TextChoices):
@@ -144,10 +145,19 @@ class AnalysisTask(models.Model):
 
 def output_layer_dir_path(instance, filename):
     """Return upload directory path for Output Layer."""
-    if instance.created_by:
+    if instance.created_by and instance.task:
         file_path = f'{str(instance.created_by.pk)}/{str(instance.task.uuid)}/'
-    else:
+    elif instance.task and not instance.is_mosaic:
         file_path = f'0/{str(instance.task.uuid)}/'
+    elif instance.is_mosaic:
+        file_path = os.path.join(
+            'mosaics',
+            instance.monitoring_type.name,
+            instance.observation_date.strftime('%Y'),
+            instance.observation_date.strftime('%m'),
+        )
+    else:
+        return f'0/{filename}'
     file_path = file_path + filename
     return file_path
 
@@ -160,7 +170,14 @@ class TaskOutput(models.Model):
         DAILY = 'daily', _('Daily')
         MONTHLY = 'monthly', _('Monthly')
 
-    task = models.ForeignKey(AnalysisTask, related_name='task_outputs', on_delete=models.CASCADE)
+    task = models.ForeignKey(
+        AnalysisTask,
+        related_name='task_outputs',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+    is_mosaic = models.BooleanField(default=False)
     file = models.FileField(upload_to=output_layer_dir_path)
     size = models.BigIntegerField(default=0)
     monitoring_type = models.ForeignKey(MonitoringIndicatorType, on_delete=models.CASCADE)
