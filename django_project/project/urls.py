@@ -24,9 +24,14 @@ urlpatterns = [
     ),
     path("awei-water-extent/", AWEIWaterExtentView.as_view(), name="awei-water-extent"),
     path(
-        'task-outputs/<str:indicator_type>/<int:year>/<int:month>/',
+        'task-outputs/streams/<str:indicator_type>/<int:year>/<int:month>/',
         RasterStreamAPIView.as_view(),
         name='raster-stream'
+    ),
+    path(
+        'task-outputs/<str:indicator_type>/<int:year>/<int:month>/',
+        TaskOutputViewSet.as_view({'get': 'get_mosaic_output'}),
+        name='combined-mosaic-output'
     ),
     path("task-outputs/", TaskOutputViewSet.as_view({'get': 'list'}), name="task-output-list"),
     path(

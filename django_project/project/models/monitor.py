@@ -153,9 +153,11 @@ def output_layer_dir_path(instance, filename):
         file_path = os.path.join(
             'mosaics',
             instance.monitoring_type.name,
-            instance.observation_date.year,
+            instance.observation_date.strftime('%Y'),
             instance.observation_date.strftime('%m'),
         )
+    else:
+        return f'0/{filename}'
     file_path = file_path + filename
     return file_path
 

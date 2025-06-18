@@ -6,6 +6,7 @@ from django.views.decorators.cache import cache_control
 from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework.authentication import (
     TokenAuthentication,
     BasicAuthentication,
@@ -33,6 +34,35 @@ class TaskOutputViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = TaskOutputFilter
 
+    def get_mosaic_output(self, request, indicator_type, year, month):
+        """
+        Handle GET request for mosaic task outputs with specific indicator_type, year, and month
+        """
+        try:
+            task_output = TaskOutput.objects.get(
+                is_mosaic=True,
+                indicator_type=indicator_type,
+                created_at__year=year,
+                created_at__month=month
+            )
+            serializer = self.serializer_class(task_output)
+            return Response(serializer.data)
+        except TaskOutput.DoesNotExist:
+            return Response(
+                {'error': 'TaskOutput not found with the specified criteria'}, 
+                status=404
+            )
+        except TaskOutput.MultipleObjectsReturned:
+            task_output = TaskOutput.objects.filter(
+                is_mosaic=True,
+                indicator_type=indicator_type,
+                created_at__year=year,
+                created_at__month=month
+            ).order_by('-created_at').first()
+            serializer = self.serializer_class(task_output)
+            return Response(serializer.data)
+
+
 
 class RasterStreamAPIView(APIView):
     """
@@ -51,16 +81,25 @@ class RasterStreamAPIView(APIView):
         Construct the file path for the raster file based on indicator
         type, year and month
         """
-        filename = f"SA_{indicator_type}_{year}-{month:02d}.tif"
-        file_path = os.path.join(
-            settings.MEDIA_ROOT,
-            'mosaics',
-            indicator_type,
-            str(year),
-            f"{month:02d}",
-            filename
-        )
-        return file_path
+        task_output = TaskOutput.objects.filter(
+            is_mosaic=True,
+            monitoring_type__name=indicator_type,
+            observation_date__year=year,
+            observation_date__month=month
+        ).order_by('-created_at').first()
+        if task_output:
+            return task_output.file.path
+        else:
+            filename = f"SA_{indicator_type}_{year}-{month:02d}.tif"
+            file_path = os.path.join(
+                settings.MEDIA_ROOT,
+                'mosaics',
+                indicator_type,
+                str(year),
+                f"{month:02d}",
+                filename
+            )
+            return file_path
 
     def file_iterator(self, file_path, chunk_size=8192):
         """
