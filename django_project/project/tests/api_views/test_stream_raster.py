@@ -27,6 +27,15 @@ class TaskOutputAPITestCase(APITestCase):
         cls.user = User.objects.create_user(username="testuser", password="testpassword")
         cls.monitoring_type = MonitoringIndicatorType.objects.get(name="AWEI")
         cls.file_path = absolute_path("project/tests/data/SA_AWEI_2025-03.tif")
+        mosaics_dir = os.path.join(
+            settings.MEDIA_ROOT,
+            'mosaics',
+            'AWEI',
+            '2025',
+            '03'
+        )
+        if not os.path.exists(mosaics_dir):
+            os.makedirs(mosaics_dir)
         cls.new_file_path = os.path.join(
             settings.MEDIA_ROOT,
             'mosaics',
