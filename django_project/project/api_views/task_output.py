@@ -48,7 +48,7 @@ class TaskOutputViewSet(viewsets.ReadOnlyModelViewSet):
             )
         except TaskOutput.DoesNotExist:
             return Response(
-                {'error': 'TaskOutput not found with the specified criteria'}, 
+                {'error': 'TaskOutput not found with the specified criteria'},
                 status=404
             )
         except TaskOutput.MultipleObjectsReturned:
@@ -66,7 +66,6 @@ class TaskOutputViewSet(viewsets.ReadOnlyModelViewSet):
         }
         data.update(serializer.data)
         return Response(data)
-
 
 
 class RasterStreamAPIView(APIView):

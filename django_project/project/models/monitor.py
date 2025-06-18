@@ -171,8 +171,8 @@ class TaskOutput(models.Model):
         MONTHLY = 'monthly', _('Monthly')
 
     task = models.ForeignKey(
-        AnalysisTask, 
-        related_name='task_outputs', 
+        AnalysisTask,
+        related_name='task_outputs',
         on_delete=models.CASCADE,
         null=True,
         blank=True

@@ -342,7 +342,9 @@ def merge_final_batches(batch_results, final_output_path, monitoring_type_name):
             if translate_result.returncode == 0:
                 TaskOutput.objects.create(
                     monitoring_type=monitoring_type,
-                    observation_date = timezone.now().date().replace(day=1) - relativedelta(months=1),
+                    observation_date=(
+                        timezone.now().date().replace(day=1) - relativedelta(months=1)
+                    ),
                     is_mosaic=True,
                     file=final_output_path
                 )
