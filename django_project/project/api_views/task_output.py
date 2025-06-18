@@ -41,11 +41,11 @@ class TaskOutputViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             task_output = TaskOutput.objects.get(
                 is_mosaic=True,
-                indicator_type=indicator_type,
-                created_at__year=year,
-                created_at__month=month
+                monitoring_type__name__iexact=indicator_type,
+                observation_date__year=year,
+                observation_date__month=month
             )
-            serializer = self.serializer_class(task_output)
+            serializer = self.get_serializer(task_output)
             return Response(serializer.data)
         except TaskOutput.DoesNotExist:
             return Response(
@@ -55,11 +55,11 @@ class TaskOutputViewSet(viewsets.ReadOnlyModelViewSet):
         except TaskOutput.MultipleObjectsReturned:
             task_output = TaskOutput.objects.filter(
                 is_mosaic=True,
-                indicator_type=indicator_type,
-                created_at__year=year,
-                created_at__month=month
+                monitoring_type__name__iexact=indicator_type,
+                observation_date__year=year,
+                observation_date__month=month
             ).order_by('-created_at').first()
-            serializer = self.serializer_class(task_output)
+            serializer = self.get_serializer(task_output)
             return Response(serializer.data)
 
 
@@ -83,7 +83,7 @@ class RasterStreamAPIView(APIView):
         """
         task_output = TaskOutput.objects.filter(
             is_mosaic=True,
-            monitoring_type__name=indicator_type,
+            monitoring_type__name__iexact=indicator_type,
             observation_date__year=year,
             observation_date__month=month
         ).order_by('-created_at').first()
