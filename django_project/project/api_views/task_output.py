@@ -1,5 +1,6 @@
 import os
 import mimetypes
+from django.shortcuts import reverse
 from django.http import StreamingHttpResponse, Http404
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
@@ -45,8 +46,6 @@ class TaskOutputViewSet(viewsets.ReadOnlyModelViewSet):
                 observation_date__year=year,
                 observation_date__month=month
             )
-            serializer = self.get_serializer(task_output)
-            return Response(serializer.data)
         except TaskOutput.DoesNotExist:
             return Response(
                 {'error': 'TaskOutput not found with the specified criteria'}, 
@@ -59,8 +58,14 @@ class TaskOutputViewSet(viewsets.ReadOnlyModelViewSet):
                 observation_date__year=year,
                 observation_date__month=month
             ).order_by('-created_at').first()
-            serializer = self.get_serializer(task_output)
-            return Response(serializer.data)
+        serializer = self.get_serializer(task_output)
+        data = {
+            'file_stream': request.build_absolute_uri(
+                reverse('raster-stream', args=[indicator_type, year, month])
+            )
+        }
+        data.update(serializer.data)
+        return Response(data)
 
 
 

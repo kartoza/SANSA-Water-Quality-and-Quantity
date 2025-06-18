@@ -10,6 +10,7 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 from project.models.monitor import TaskOutput, MonitoringIndicatorType
+from project.serializers.monitoring import TaskOutputSerializer
 from core.settings.utils import absolute_path
 
 
@@ -213,3 +214,26 @@ class TaskOutputAPITestCase(APITestCase):
         
         with self.assertRaises(Http404):
             list(view.file_iterator("/nonexistent/file.tif"))
+
+    def test_combined_raster_info(self):
+        """Test combined raster info is returned correctly."""
+        
+        response = self.client.get("/api/task-outputs/awei/2025/03/")
+
+        serializer = TaskOutputSerializer(self.task_output)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data,
+            {
+                'file_stream': 'http://testserver/api/task-outputs/streams/awei/2025/3/', 
+                'id': self.task_output.id, 
+                'task_id': None, 
+                'file': 'http://testserver/media/home/web/media/mosaics/AWEI/2025/03/SA_AWEI_2025-03.tif', 
+                'size': 0, 
+                'monitoring_type': 'AWEI', 
+                'created_at': serializer.data['created_at'],
+                'observation_date': '2025-03-01', 
+                'period': 'monthly'
+            }
+        )
